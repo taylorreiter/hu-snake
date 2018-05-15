@@ -1,77 +1,32 @@
 from snakemake.utils import R
 configfile: "config.yml"
 
+# 1. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa
+# 2. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa
+# 3. 0.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa
+
+# 1 is the unitigs from the croissant
+# 2 is #1 - #3
+# 3 is the assembly of the croissant reads using megahit
+
 rule download_croissants:
-    output: 'inputs/hu-croissants/{sample}.fa.nbhd.fa.gz'
+    output: 'inputs/hu-croissants/hu-croissants.tar.gz'
     shell:'''
-    curl -L -o inputs/hu-croissants/hu-croissant08.fa.nbhd.fa.gz https://osf.io/g2zvh/download 
-    curl -L -o inputs/hu-croissants/hu-croissant11.fa.nbhd.fa.gz https://osf.io/5k2zj/download
-    curl -L -o inputs/hu-croissants/hu-croissant19.fa.nbhd.fa.gz https://osf.io/29bk8/download
-    ''' 
-    
-# MEGAHIT & ANNOTATE UNITIGS ---------------------------------------------
-    
-rule assemble_croissants:
-    output: 'outputs/hu-croissants/megahit/{sample}.contigs.fa'
-    input: 'inputs/hu-croissants/{sample}.fa.nbhd.fa.gz'
-    conda: 'env.yml'
-    params:
-        output_folder = 'outputs/hu-croissants/megahit'
-    shell:'''
-    # megahit does not allow force overwrite, so each assembly needs to take place in it's own directory.
-    megahit -r {input} --min-contig-len 141 --out-dir {wildcards.sample} --out-prefix {wildcards.sample} 
-    # move the final assembly to a folder containing all assemblies
-    mv {wildcards.sample}/{wildcards.sample}.contigs.fa {params.output_folder}/{wildcards.sample}.contigs.fa
-    # remove the original megahit assembly folder, which is in the main directory.
-    rm -rf {wildcards.sample}
-    ''' 
-
-# annotate megahit assemblies and hu genomes with prokka
-rule prokka_megahit_croissants:
-    output: 'outputs/hu-croissants/megahit-prokka/{sample}.faa'
-    input:  'outputs/hu-croissants/megahit/{sample}.contigs.fa'
-    conda: 'env.yml'
-    params:
-        output_folder = 'outputs/hu-croissants/megahit-prokka'
-    shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.sample} --metagenome --force
-    touch {output}
+    curl -L -o {output} https://osf.io/u5yqf/download
     '''
 
-# ANNOTATE UNITIGS ------------------------------------------------------
-
-rule gunzip_unitig_croissants:
-    output: 'inputs/hu-croissants/{sample}.fa.nbhd.fa'
-    input: 'inputs/hu-croissants/{sample}.fa.nbhd.fa.gz'
+rule unpack_croissants:
+    output: 
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'),
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'),
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa')
+    input: 'inputs/hu-croissants/hu-croissants.tar.gz'
+    params: output_folder = 'inputs/hu-croissants/'
     shell:'''
-    gunzip {input}
-    '''
-    
-rule prokka_unitig_croissants:
-    output: 'outputs/hu-croissants/unitig-prokka/{sample}.faa'
-    input:  'inputs/hu-croissants/{sample}.fa.nbhd.fa'
-    conda: 'env.yml'
-    params:
-        output_folder = 'outputs/hu-croissants/unitig-prokka'
-    shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.sample} --metagenome --force
-    touch {output}
-    '''
-       
-# COMBINE MEGAHIT & UNITIG ANNOTATIONS ----------------------------------
-
-rule combine_prokka:
-    output: 'outputs/hu-croissants/prokka-all/{sample}.faa'
-    input:  
-        mh = 'outputs/hu-croissants/megahit-prokka/{sample}.faa',
-        uni = 'outputs/hu-croissants/unitig-prokka/{sample}.faa'
-    shell:'''
-    Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
+    tar xf {input} --directory {params.output_folder}
     '''
 
-# BLAST -----------------------------------------------------------------
-
-# blast the amino acid sequences against interesting dbs
+# resources for all analyses:
 
 rule download_blast_db_seqs:
     output: 'inputs/blast_db/interesting-aa.faa'
@@ -112,31 +67,94 @@ rule make_blast_db:
     makeblastdb -in {input} -dbtype prot
     '''
 
-rule blastp:
-    output: 'outputs/hu-croissants/blast/{sample}-blastp.tab'
+# UNITIGS ################################################################   
+# megahit & annotate unitigs ---------------------------------------------
+    
+rule assemble_croissant_unitigs:
+    output: 'outputs/hu-croissants/unitigs/megahit/{croissant}.contigs.fa'
+    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/unitigs/megahit'
+    shell:'''
+    # megahit does not allow force overwrite, so each assembly needs to take place in it's own directory.
+    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.croissant} --out-prefix {wildcards.croissant} 
+    # move the final assembly to a folder containing all assemblies
+    mv {wildcards.croissant}/{wildcards.croissant}.contigs.fa {params.output_folder}/{wildcards.croissant}.contigs.fa
+    # remove the original megahit assembly folder, which is in the main directory.
+    rm -rf {wildcards.croissant}
+    ''' 
+
+# annotate megahit assemblies and hu genomes with prokka
+rule prokka_megahit_croissant_unitigs:
+    output: 'outputs/hu-croissants/unitigs/megahit-prokka/{croissant}.faa'
+    input:  'outputs/hu-croissants/unitigs/megahit/{croissant}.contigs.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/unitigs/megahit-prokka'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    touch {output}
+    '''
+
+# annotate unitigs ------------------------------------------------------
+
+# rule gunzip_unitig_croissants:
+#     output: 'inputs/hu-croissants/{croissant}.fa.nbhd.fa'
+#     input: 'inputs/hu-croissants/{croissant}.fa.nbhd.fa.gz'
+#     shell:'''
+#     gunzip {input}
+#     '''
+    
+rule prokka_croissants_unitigs:
+    output: 'outputs/hu-croissants/unitigs/unitig-prokka/{croissant}.faa'
+    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/unitigs/unitig-prokka'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    touch {output}
+    '''
+       
+# combine megahit and unitig annotations ---------------------------------
+
+rule combine_prokka_croissant_unitigs:
+    output: 'outputs/hu-croissants/unitigs/prokka-all/{croissant}.faa'
+    input:  
+        mh = 'outputs/hu-croissants/unitigs/megahit-prokka/{croissant}.faa',
+        uni = 'outputs/hu-croissants/unitigs/unitig-prokka/{croissant}.faa'
+    shell:'''
+    Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
+    '''
+
+# blast ------------------------------------------------------------------
+
+rule blastp_croissant_unitigs:
+    output: 'outputs/hu-croissants/unitigs/blast/{croissant}-blastp.tab'
     input: 
         db = 'inputs/blast_db/interesting-aa.faa.psq',
-        query = 'outputs/hu-croissants/prokka-all/{sample}.faa'
+        query = 'outputs/hu-croissants/unitigs/prokka-all/{croissant}.faa'
     conda: 'env.yml'   
     shell: '''
     touch {input.db}
     blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
     '''
 
-# BUSCO ------------------------------------------------------------
+# busco ------------------------------------------------------------
 
 # NOTE this relies on the dbs downloaded in genome.snakefile. Fix this later so input files will be found.
 
-rule run_busco_bac_c:
-    output: 'outputs/hu-croissants/busco/run_{sample}_bac'
-    input: 
-        croissant_in='inputs/hu-croissants/{sample}.fa.nbhd.fa',
-        busco_db='inputs/busco/bacteria_odb9/'
-    conda:  "env.yml"
-    shell:'''
-	run_busco -i {input.croissant_in} -o {wildcards.sample}_bac -l {input.busco_db} -m geno
-    mv run_{wildcards.sample}_bac {output}
-    '''
+# rule run_busco_bac_c:
+#     output: 'outputs/hu-croissants/unitigs/busco/run_{croissant}_bac'
+#     input: 
+#         croissant_in='inputs/hu-croissants/{croissant}.fa.nbhd.fa',
+#         busco_db='inputs/busco/bacteria_odb9/'
+#     conda:  "env.yml"
+#     shell:'''
+# 	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
+#     mv run_{wildcards.croissant}_bac {output}
+#     '''
 
 # rule run_busco_arch:
 #     output: 'outputs/hu-croissants/busco/run_{croissant}_arch'
@@ -148,3 +166,96 @@ rule run_busco_bac_c:
 # 	run_busco -i {input.croissant_in} -o {wildcards.croissant}_arch -l {input.busco_db} -m geno
 #     mv run_{wildcards.croissant}_arch {output}
 #     ''' 
+
+# SUBTRACTION ################################################################
+
+rule assemble_croissant_subtracts:
+    output: 'outputs/hu-croissants/subtracts/megahit/{croissant}.contigs.fa'
+    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/subtracts/megahit'
+    shell:'''
+    # megahit does not allow force overwrite, so each assembly needs to take place in it's own directory.
+    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.croissant} --out-prefix {wildcards.croissant} 
+    # move the final assembly to a folder containing all assemblies
+    mv {wildcards.croissant}/{wildcards.croissant}.contigs.fa {params.output_folder}/{wildcards.croissant}.contigs.fa
+    # remove the original megahit assembly folder, which is in the main directory.
+    rm -rf {wildcards.croissant}
+    ''' 
+
+# annotate megahit assemblies and hu genomes with prokka
+rule prokka_megahit_croissants_subtracts:
+    output: 'outputs/hu-croissants/subtracts/megahit-prokka/{croissant}.faa'
+    input:  'outputs/hu-croissants/subtracts/megahit/{croissant}.contigs.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/subtracts/megahit-prokka'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    touch {output}
+    '''
+
+# annotate unitigs ------------------------------------------------------
+    
+rule prokka_unitig_croissants_subtracts:
+    output: 'outputs/hu-croissants/subtracts/unitig-prokka/{croissant}.faa'
+    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/subtracts/unitig-prokka'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    touch {output}
+    '''
+       
+# combine megahit and unitig annotations ---------------------------------
+
+rule combine_prokka_subtracts:
+    output: 'outputs/hu-croissants/subtracts/prokka-all/{croissant}.faa'
+    input:  
+        mh = 'outputs/hu-croissants/subtracts/megahit-prokka/{croissant}.faa',
+        uni = 'outputs/hu-croissants/subtracts/unitig-prokka/{croissant}.faa'
+    shell:'''
+    Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
+    '''
+
+# blast ------------------------------------------------------------------
+
+rule blastp:
+    output: 'outputs/hu-croissants/subtracts/blast/{croissant}-blastp.tab'
+    input: 
+        db = 'inputs/blast_db/interesting-aa.faa.psq',
+        query = 'outputs/hu-croissants/subtracts/prokka-all/{croissant}.faa'
+    conda: 'env.yml'   
+    shell: '''
+    touch {input.db}
+    blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
+    '''
+
+# ASSEMBLIES ################################################################
+
+# annotate megahit assemblies and hu genomes with prokka
+rule prokka_megahit_croissants_assemblies:
+    output: 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa'
+    conda: 'env.yml'
+    params:
+        output_folder = 'outputs/hu-croissants/assembly/prokka'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    touch {output}
+    '''
+    
+# blast ------------------------------------------------------------------
+
+rule blastp_assemblies:
+    output: 'outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab'
+    input: 
+        db = 'inputs/blast_db/interesting-aa.faa.psq',
+        query = 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+    conda: 'env.yml'   
+    shell: '''
+    touch {input.db}
+    blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
+    '''
