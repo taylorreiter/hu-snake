@@ -15,10 +15,9 @@ include: "genome.snakefile"
 
 rule all:
     input:
-        # expand('outputs/hu-bins/prokka/{bin}.faa', bin = config['sampleBIN']),
-        # expand('outputs/hu-bins/busco/run_{bin}_bac', bin =  config['sampleBIN']),
-        # expand('outputs/hu-croissants/busco/run_{croissant}_bac', croissant = config['sampleCROISSANT']),
-        dynamic('outputs/hu-croissants/unitigs/blast/{croissant}-blastp.tab'),
-        dynamic('outputs/hu-croissants/subtracts/blast/{croissant}-blastp.tab'),
-        dynamic('outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab')
+        #dynamic('outputs/hu-croissants/unitigs/blast/{croissant}-blastp.tab'),
+        #dynamic('outputs/hu-croissants/subtracts/blast/{croissant}-blastp.tab'),
+        #dynamic('outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab'),
+        dynamic('outputs/hu-croissants/unitigs/busco/run_{croissant}_bac'),
+        dynamic('outputs/hu-croissants/assembly/busco/run_{croissant}_bac')
         

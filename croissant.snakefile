@@ -99,13 +99,6 @@ rule prokka_megahit_croissant_unitigs:
 
 # annotate unitigs ------------------------------------------------------
 
-# rule gunzip_unitig_croissants:
-#     output: 'inputs/hu-croissants/{croissant}.fa.nbhd.fa'
-#     input: 'inputs/hu-croissants/{croissant}.fa.nbhd.fa.gz'
-#     shell:'''
-#     gunzip {input}
-#     '''
-    
 rule prokka_croissants_unitigs:
     output: 'outputs/hu-croissants/unitigs/unitig-prokka/{croissant}.faa'
     input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
@@ -143,30 +136,29 @@ rule blastp_croissant_unitigs:
 
 # busco ------------------------------------------------------------
 
-# NOTE this relies on the dbs downloaded in genome.snakefile. Fix this later so input files will be found.
+# estimate number of single copy orthologs that are contained in the unitigs, subtracts, and in the assemblies originating from the croissants.
+# # https://www.microbe.net/2017/12/13/why-genome-completeness-and-contamination-estimates-are-more-complicated-than-you-think/
 
-# rule run_busco_bac_c:
-#     output: 'outputs/hu-croissants/unitigs/busco/run_{croissant}_bac'
-#     input: 
-#         croissant_in='inputs/hu-croissants/{croissant}.fa.nbhd.fa',
-#         busco_db='inputs/busco/bacteria_odb9/'
-#     conda:  "env.yml"
-#     shell:'''
-# 	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
-#     mv run_{wildcards.croissant}_bac {output}
-#     '''
+rule download_busco_bac:
+    output: 
+        db='inputs/busco/bacteria_odb9/',
+        tgz='inputs/busco/bacteria_odb9.tar.gz'
+    shell:'''
+    wget -O {output.tgz} http://busco.ezlab.org/datasets/bacteria_odb9.tar.gz
+	mkdir -p {output.db}
+    tar -xf {output.tgz} --strip-components=1 -C {output.db}
+    '''
 
-# rule run_busco_arch:
-#     output: 'outputs/hu-croissants/busco/run_{croissant}_arch'
-#     input: 
-#         croissant_in='inputs/hu-croissants/{croissant}.fa',
-#         busco_db='inputs/busco/archea_odb9/'
-#     conda:  "env.yml"
-#     shell:'''
-# 	run_busco -i {input.croissant_in} -o {wildcards.croissant}_arch -l {input.busco_db} -m geno
-#     mv run_{wildcards.croissant}_arch {output}
-#     ''' 
-
+rule run_busco_bac_unitigs:
+    output: 'outputs/hu-croissants/unitigs/busco/run_{croissant}_bac'
+    input: 
+        croissant_in='inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa',
+        busco_db='inputs/busco/bacteria_odb9/'
+    conda:  "env.yml"
+    shell:'''
+	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
+    mv run_{wildcards.croissant}_bac {output}
+    '''
 # SUBTRACTION ################################################################
 
 rule assemble_croissant_subtracts:
@@ -258,4 +250,16 @@ rule blastp_assemblies:
     shell: '''
     touch {input.db}
     blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
+    '''
+# busco ------------------------------------------------------------------
+
+rule run_busco_bac_assembly:
+    output: 'outputs/hu-croissants/assembly/busco/run_{croissant}_bac'
+    input: 
+        croissant_in='inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa',
+        busco_db='inputs/busco/bacteria_odb9/'
+    conda:  "env.yml"
+    shell:'''
+	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
+    mv run_{wildcards.croissant}_bac {output}
     '''

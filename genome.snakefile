@@ -33,17 +33,9 @@ rule prokka_bins:
 # BUSCO -------------------------------------------------------------
 # https://www.microbe.net/2017/12/13/why-genome-completeness-and-contamination-estimates-are-more-complicated-than-you-think/
 
-rule download_busco_bac:
-    output: 
-        db='inputs/busco/bacteria_odb9/',
-        tgz='inputs/busco/bacteria_odb9.tar.gz'
-    shell:'''
-    wget -O {output.tgz} http://busco.ezlab.org/datasets/bacteria_odb9.tar.gz
-	mkdir -p {output.db}
-    tar -xf {output.tgz} --strip-components=1 -C {output.db}
-    '''
+
     
-rule run_busco_bac:
+rule run_busco_bac_bins:
     output: 'outputs/hu-bins/busco/run_{bin}_bac'
     input: 
         bin_in='inputs/hu-bins/{bin}.fa',
@@ -54,29 +46,3 @@ rule run_busco_bac:
     mv run_{wildcards.bin}_bac {output}
     '''
 
-# rule run_busco_arch:
-#     output: 'outputs/hu-bins/busco/run_{bin}_arch'
-#     input: 
-#         bin_in='inputs/hu-bins/{bin}.fa',
-#         busco_db='inputs/busco/archea_odb9/'
-#     conda:  "env.yml"
-#     shell:'''
-# 	run_busco -i {input.bin_in} -o {wildcards.bin}_arch -l {input.busco_db} -m geno
-#     mv run_{wildcards.bin}_arch {output}
-#     '''
-# 
-# rule download_busco_arch:
-#     output: 
-#         db='inputs/busco/archea_odb9/',
-#         tgz='inputs/busco/archea_odb9.tar.gz'
-#     shell:'''
-#     wget -O {output.tgz} http://www.orthodb.org/v9.1/download/odb9v1_archea_fasta.tar.gz
-# 	mkdir -p {output.db}
-#     tar -xf {output.tgz} --strip-components=1 -C {output.db}
-#     '''
-     
-# rule busco_bins:
-#     output:
-#     input:
-#     conda:
-    
