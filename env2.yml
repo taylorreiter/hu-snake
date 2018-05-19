@@ -1,0 +1,9 @@
+channels:
+ - bioconda
+ - conda-forge
+ - r
+dependencies:
+ - r-skimr=1.0.2
+ - r-dplyr
+ - r-tidyr
+
