@@ -66,6 +66,42 @@ rule make_blast_db:
     shell:'''
     makeblastdb -in {input} -dbtype prot
     '''
+    
+# SUMMARY STATS ----------------------------------------------------------
+
+rule index_hu_unitigs:
+    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.fai'
+    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+    conda: 'env.yml'
+    shell:'''
+    samtools faidx {input}
+    '''
+    
+rule index_hu_assembly:
+    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa.fai'
+    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa'
+    conda: 'env.yml'
+    shell:'''
+    samtools faidx {input}
+    '''
+   
+rule index_hu_subtract:
+    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa.fai'
+    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+    conda: 'env.yml'
+    shell:'''
+    samtools faidx {input}
+    '''
+rule summarize_hu:
+    output: 'outputs/hu-croissants/summary_of_inputs.tsv'
+    input: 
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.fai'),
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa.fai'),
+        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa.fai')
+    conda: 'env2.yml'
+    shell:'''
+    Rscript --vanilla scripts/skim_input.R
+    '''
 
 # UNITIGS ################################################################   
 # megahit & annotate unitigs ---------------------------------------------
@@ -159,6 +195,7 @@ rule run_busco_bac_unitigs:
 	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
     mv run_{wildcards.croissant}_bac {output}
     '''
+    
 # SUBTRACTION ################################################################
 
 rule assemble_croissant_subtracts:
@@ -168,11 +205,8 @@ rule assemble_croissant_subtracts:
     params:
         output_folder = 'outputs/hu-croissants/subtracts/megahit'
     shell:'''
-    # megahit does not allow force overwrite, so each assembly needs to take place in it's own directory.
     megahit -r {input} --min-contig-len 142 --out-dir {wildcards.croissant} --out-prefix {wildcards.croissant} 
-    # move the final assembly to a folder containing all assemblies
     mv {wildcards.croissant}/{wildcards.croissant}.contigs.fa {params.output_folder}/{wildcards.croissant}.contigs.fa
-    # remove the original megahit assembly folder, which is in the main directory.
     rm -rf {wildcards.croissant}
     ''' 
 
@@ -214,7 +248,7 @@ rule combine_prokka_subtracts:
 
 # blast ------------------------------------------------------------------
 
-rule blastp:
+rule blastp_subtracts:
     output: 'outputs/hu-croissants/subtracts/blast/{croissant}-blastp.tab'
     input: 
         db = 'inputs/blast_db/interesting-aa.faa.psq',
@@ -228,7 +262,7 @@ rule blastp:
 # ASSEMBLIES ################################################################
 
 # annotate megahit assemblies and hu genomes with prokka
-rule prokka_megahit_croissants_assemblies:
+rule prokka_croissants_assemblies:
     output: 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
     input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa'
     conda: 'env.yml'

@@ -2,6 +2,4 @@ channels:
  - conda-forge
 dependencies:
  - r-skimr=1.0.2
-# - r-dplyr
-# - r-tidyr
  - r-tidyverse
