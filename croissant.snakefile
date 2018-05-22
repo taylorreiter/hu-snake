@@ -1,6 +1,9 @@
 from snakemake.utils import R
 configfile: "config.yml"
 
+# TO DO:
+# 1. ADD --LOCUSTAG IN SOME CLEVER WAY TO ALL PROKKA RULES
+
 # 1. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa
 # 2. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa
 # 3. 0.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa
@@ -66,7 +69,25 @@ rule make_blast_db:
     shell:'''
     makeblastdb -in {input} -dbtype prot
     '''
+
+rule download_blast_db_seqs_tax:
+    output: 'inputs/blast_db/taxonomy-aa.faa'
+    shell:'''
+    curl -L -o gyrA.faa 'http://www.uniprot.org/uniprot/?query=gyra&sort=score&format=fasta'
+    curl -L -o gyrB.faa 'http://www.uniprot.org/uniprot/?query=gyrb&sort=score&format=fasta'
+    curl -L -o recA.faa 'http://www.uniprot.org/uniprot/?query=reca&sort=score&format=fasta'
+    cat gyrA.faa gyrB.faa recA.faa > {output}
+    rm gyrA.faa gyrB.faa recA.faa
+    '''
     
+rule make_blast_db_tax:
+    output: 'inputs/blast_db/taxonomy-aa.faa.psq'
+    input: 'inputs/blast_db/taxonomy-aa.faa'
+    conda: 'env.yml'
+    shell:'''
+    makeblastdb -in {input} -dbtype prot
+    '''
+       
 # SUMMARY STATS ----------------------------------------------------------
 
 rule index_hu_unitigs:
@@ -92,6 +113,7 @@ rule index_hu_subtract:
     shell:'''
     samtools faidx {input}
     '''
+    
 rule summarize_hu:
     output: 'outputs/hu-croissants/summary_of_inputs.tsv'
     input: 
@@ -129,7 +151,7 @@ rule prokka_megahit_croissant_unitigs:
     params:
         output_folder = 'outputs/hu-croissants/unitigs/megahit-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}mhuni
     touch {output}
     '''
 
@@ -142,7 +164,7 @@ rule prokka_croissants_unitigs:
     params:
         output_folder = 'outputs/hu-croissants/unitigs/unitig-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}uni
     touch {output}
     '''
        
@@ -218,7 +240,7 @@ rule prokka_megahit_croissants_subtracts:
     params:
         output_folder = 'outputs/hu-croissants/subtracts/megahit-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}mhsub
     touch {output}
     '''
 
@@ -231,8 +253,8 @@ rule prokka_unitig_croissants_subtracts:
     params:
         output_folder = 'outputs/hu-croissants/subtracts/unitig-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
-    touch {output}
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}sub
+    touch {output} 
     '''
        
 # combine megahit and unitig annotations ---------------------------------
@@ -269,21 +291,32 @@ rule prokka_croissants_assemblies:
     params:
         output_folder = 'outputs/hu-croissants/assembly/prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}ass
     touch {output}
     '''
     
 # blast ------------------------------------------------------------------
 
-rule blastp_assemblies:
-    output: 'outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab'
-    input: 
-        db = 'inputs/blast_db/interesting-aa.faa.psq',
-        query = 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
-    conda: 'env.yml'   
-    shell: '''
+# rule blastp_assemblies:
+#     output: 'outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab'
+#     input: 
+#         db = 'inputs/blast_db/interesting-aa.faa.psq',
+#         query = 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+#     conda: 'env.yml'   
+#     shell: '''
+#     touch {input.db}
+#     blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
+#     '''
+
+rule blastp_tax_assemblies:
+    output: 'outputs/hu-croissants/assembly/blast/{croissant}-tax-blastp.tab'
+    input:
+        db='inputs/blast_db/taxonomy-aa.faa.psq',
+        query='outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+    conda: 'env.yml'
+    shell:'''
     touch {input.db}
-    blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -out {output} -outfmt 6
+    blastp -query {input.query} -db inputs/blast_db/interesting-aa.faa -evalue 1E-10 -max_target_seqs 5 -out {output} -outfmt 6
     '''
 # busco ------------------------------------------------------------------
 
