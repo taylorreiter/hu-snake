@@ -1,0 +1,6 @@
+channels:
+ - bioconda
+dependencies:
+ - bioconductor-clusterprofiler=3.6.0
+ - r-ggplot2=2.2.1
+ - r-dplyr=0.5.0
