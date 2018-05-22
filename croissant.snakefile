@@ -120,7 +120,7 @@ rule summarize_hu:
         dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.fai'),
         dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa.fai'),
         dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa.fai')
-    conda: 'env2.yml'
+    conda: 'env-skimr.yml'
     shell:'''
     Rscript --vanilla scripts/skim_input.R
     '''
