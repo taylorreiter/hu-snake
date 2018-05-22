@@ -2,13 +2,10 @@ library(dplyr)
 library(tidyr)
 library(skimr)
 
-print(sessionInfo())
-
 # list files
 all_fai <- list.files("inputs/hu-croissants", ".fai$")
 all_fai_full <- list.files("inputs/hu-croissants", ".fai$", full.names = T)
 
-print("reading in files")
 # read in all files
 fai_df <- data.frame(V2 = NA, name = NA)
 for(i in 1:(length(all_fai))){
@@ -32,14 +29,12 @@ fai_df <- fai_df %>%
 
 colnames(fai_df) <- c("length", "genome", "type")
 
-print("converting to factor")
 # convert to factor
 fai_df$genome <- as.factor(fai_df$genome)
 fai_df$type <- as.factor(fai_df$type)
 fai_df$length <- as.numeric(fai_df$length)
 
 # Change default skim stats so sum (aka number of nucleotides) will be included.
-print("Change default skim stats")
 skim_with(numeric = list(sum = sum), append = TRUE)
 print("skim!")
 skim_summary <- fai_df %>% 
@@ -47,5 +42,4 @@ skim_summary <- fai_df %>%
   skim_to_wide() %>%
   select(genome, n, p0, p50, p100, sum, hist)
 
-print("about to write file")
 write.table(skim_summary, file = "outputs/hu-croissants/summary_of_inputs.tsv", sep = "\t", quote = F, row.names = F)
