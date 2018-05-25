@@ -6,16 +6,14 @@ args = commandArgs(trailingOnly=TRUE)
 # args[4]: OUTPUT. plot2a
 # args[5]: OUTPUT. plot2b  
 
-library(ggplot2)
-library(ggthemes)
 library(clusterProfiler)
 library(dplyr)
-
+library(ggplot2)
 
 # READ & FORMAT DATA ------------------------------------------------------------
 
 # read in metadata
-info <- read.csv("sandbox/hu_info.csv")
+info <- read.csv(args[1])
 
 # read in data
 # the first sys arg will be a parameter which specifies in which folder the files are in. 
@@ -33,7 +31,7 @@ for(i in 1:(length(all_kegg_full))){
 
 # retain only kegg ids for which the score is > 40
 kegg_df <- kegg_df[kegg_df$score > 40, ]
-kegg_df
+
 # Get mappings of KO id to BRITE hierarchy description
 keggo <- kegg_df[ , 2]
 keggo <- keggo[!is.na(keggo)]
