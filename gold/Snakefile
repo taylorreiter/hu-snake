@@ -1,0 +1,74 @@
+rule all: 
+    input: 
+        dynamic('outputs/gold_prots/{bin}_gold.fa')
+
+rule download_bins:
+    output: 'inputs/hu-bins/hu-genomes.tar.gz'
+    shell:'''
+    curl -L -o {output} https://osf.io/ehgbv/download 
+    '''
+
+rule unpack_bins:
+    output: dynamic('inputs/hu-bins/{bin}.fa')
+    input: 'inputs/hu-bins/hu-genomes.tar.gz'
+    params: output_folder = 'inputs/hu-bins'
+    shell:'''
+    tar xf {input} --directory {params.output_folder}
+    '''
+
+rule prokka_bins:
+    output: 
+        'outputs/prokka/{bin}.faa',
+        'outputs/prokka/{bin}.ffn'
+    input: 'inputs/hu-bins/{bin}.fa'
+    conda: 'env.yml'
+    params: output_folder = 'outputs/prokka/'
+    shell:'''
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.bin} --metagenome --force --locustag {wildcards.bin}
+    '''
+
+rule download_kegg:
+    output: 'outputs/GhostKOALA/all_bins_prokka.ko-tax'
+    shell:'''
+    # placeholder; download from osf
+    touch {output}
+    '''
+
+rule parse_kegg:
+    output: dynamic('outputs/gold_prots/{bin}.txt')
+    input: 'outputs/GhostKOALA/all_bins_prokka.ko-tax'
+    run:
+        import pandas as pd
+        
+        hu = pd.read_table(str(input), header=None)
+        hu = hu.loc[hu[6] > 100]
+        hu[0] = hu[0].replace("user:",  "", regex = True)
+        hu[7] = hu[0].replace("_[0-9]{5,6}", "", regex = True)
+
+        for bin, hu_bin in hu.groupby(7):
+            tally = hu_bin[3].value_counts().rename_axis(bin).reset_index(name='counts')
+            species = tally.iloc[0, 0]
+            hu_bin_pruned = hu_bin.loc[hu_bin[3] == species]
+            hu_bin_pruned[0].to_csv(f"outputs/gold_prots/{bin}.txt", index = False, header = False, sep = "\t")
+
+rule index: 
+    output: 'outputs/prokka/{bin}.ffn.fai'
+    input: 'outputs/prokka/{bin}.ffn'
+    conda: "env.yml"
+    shell: '''
+    samtools faidx {input}
+    '''
+
+rule faidx:
+    output: 'outputs/gold_prots/{bin}_gold.fa'
+    input:
+        key = 'outputs/gold_prots/{bin}.txt',
+        ffn = 'outputs/prokka/{bin}.ffn',
+        fai = 'outputs/prokka/{bin}.ffn.fai'
+    conda: 'env.yml'
+    shell:'''
+    while read inline
+    do
+      samtools faidx {input.ffn} $inline >> {output}
+    done < {input.key}
+    '''
