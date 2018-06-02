@@ -1,30 +1,27 @@
 from snakemake.utils import R
 configfile: "config.yml"
 
-# TO DO:
-# 1. ADD --LOCUSTAG IN SOME CLEVER WAY TO ALL PROKKA RULES
+# 1. 0.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa
+# 2. 0.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa
+# 3. 0.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa
 
-# 1. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa
-# 2. 0.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa
-# 3. 0.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa
-
-# 1 is the unitigs from the croissant
+# 1 is the unitigs from the crumb_bin
 # 2 is #1 - #3
-# 3 is the assembly of the croissant reads using megahit
+# 3 is the assembly of the crumb_bin reads using megahit
 
-rule download_croissants:
-    output: 'inputs/hu-croissants/hu-croissants.tar.gz'
+rule download_crumbs_bin:
+    output: 'inputs/hu-crumbs_bin/hu-crumbs_bin.tar.gz'
     shell:'''
     curl -L -o {output} https://osf.io/u5yqf/download
     '''
 
-rule unpack_croissants:
+rule unpack_crumbs_bin:
     output: 
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'),
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'),
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa')
-    input: 'inputs/hu-croissants/hu-croissants.tar.gz'
-    params: output_folder = 'inputs/hu-croissants/'
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa'),
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa'),
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa')
+    input: 'inputs/hu-crumbs_bin/hu-crumbs_bin.tar.gz'
+    params: output_folder = 'inputs/hu-crumbs_bin/'
     shell:'''
     tar xf {input} --directory {params.output_folder}
     '''
@@ -91,35 +88,35 @@ rule make_blast_db_tax:
 # SUMMARY STATS ----------------------------------------------------------
 
 rule index_hu_unitigs:
-    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.fai'
-    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+    output: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.fai'
+    input: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa'
     conda: 'env.yml'
     shell:'''
     samtools faidx {input}
     '''
     
 rule index_hu_assembly:
-    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa.fai'
-    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa'
+    output: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa.fai'
+    input: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa'
     conda: 'env.yml'
     shell:'''
     samtools faidx {input}
     '''
    
 rule index_hu_subtract:
-    output: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa.fai'
-    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+    output: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa.fai'
+    input: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa'
     conda: 'env.yml'
     shell:'''
     samtools faidx {input}
     '''
     
 rule summarize_hu:
-    output: 'outputs/hu-croissants/summary_of_inputs.tsv'
+    output: 'outputs/hu-crumbs_bin/summary_of_inputs.tsv'
     input: 
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.fai'),
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa.fai'),
-        dynamic('inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa.fai')
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.fai'),
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa.fai'),
+        dynamic('inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa.fai')
     conda: 'env-skimr.yml'
     shell:'''
     Rscript --vanilla scripts/skim_input.R
@@ -128,64 +125,64 @@ rule summarize_hu:
 # UNITIGS ################################################################   
 # megahit & annotate unitigs ---------------------------------------------
     
-rule assemble_croissant_unitigs:
-    output: 'outputs/hu-croissants/unitigs/megahit/{croissant}.contigs.fa'
-    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+rule assemble_crumb_bin_unitigs:
+    output: 'outputs/hu-crumbs_bin/unitigs/megahit/{crumb_bin}.contigs.fa'
+    input: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/unitigs/megahit'
+        output_folder = 'outputs/hu-crumbs_bin/unitigs/megahit'
     shell:'''
     # megahit does not allow force overwrite, so each assembly needs to take place in it's own directory.
-    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.croissant} --out-prefix {wildcards.croissant} 
+    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.crumb_bin} --out-prefix {wildcards.crumb_bin} 
     # move the final assembly to a folder containing all assemblies
-    mv {wildcards.croissant}/{wildcards.croissant}.contigs.fa {params.output_folder}/{wildcards.croissant}.contigs.fa
+    mv {wildcards.crumb_bin}/{wildcards.crumb_bin}.contigs.fa {params.output_folder}/{wildcards.crumb_bin}.contigs.fa
     # remove the original megahit assembly folder, which is in the main directory.
-    rm -rf {wildcards.croissant}
+    rm -rf {wildcards.crumb_bin}
     ''' 
 
 # annotate megahit assemblies and hu genomes with prokka
-rule prokka_megahit_croissant_unitigs:
-    output: 'outputs/hu-croissants/unitigs/megahit-prokka/{croissant}.faa'
-    input:  'outputs/hu-croissants/unitigs/megahit/{croissant}.contigs.fa'
+rule prokka_megahit_crumb_bin_unitigs:
+    output: 'outputs/hu-crumbs_bin/unitigs/megahit-prokka/{crumb_bin}.faa'
+    input:  'outputs/hu-crumbs_bin/unitigs/megahit/{crumb_bin}.contigs.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/unitigs/megahit-prokka'
+        output_folder = 'outputs/hu-crumbs_bin/unitigs/megahit-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}mhuni
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.crumb_bin} --metagenome --force --locustag {wildcards.crumb_bin}mhuni
     touch {output}
     '''
 
 # annotate unitigs ------------------------------------------------------
 
-rule prokka_croissants_unitigs:
-    output: 'outputs/hu-croissants/unitigs/unitig-prokka/{croissant}.faa'
-    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa'
+rule prokka_crumbs_bin_unitigs:
+    output: 'outputs/hu-crumbs_bin/unitigs/unitig-prokka/{crumb_bin}.faa'
+    input:  'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/unitigs/unitig-prokka'
+        output_folder = 'outputs/hu-crumbs_bin/unitigs/unitig-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}uni
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.crumb_bin} --metagenome --force --locustag {wildcards.crumb_bin}uni
     touch {output}
     '''
        
 # combine megahit and unitig annotations ---------------------------------
 
-rule combine_prokka_croissant_unitigs:
-    output: 'outputs/hu-croissants/unitigs/prokka-all/{croissant}.faa'
+rule combine_prokka_crumb_bin_unitigs:
+    output: 'outputs/hu-crumbs_bin/unitigs/prokka-all/{crumb_bin}.faa'
     input:  
-        mh = 'outputs/hu-croissants/unitigs/megahit-prokka/{croissant}.faa',
-        uni = 'outputs/hu-croissants/unitigs/unitig-prokka/{croissant}.faa'
+        mh = 'outputs/hu-crumbs_bin/unitigs/megahit-prokka/{crumb_bin}.faa',
+        uni = 'outputs/hu-crumbs_bin/unitigs/unitig-prokka/{crumb_bin}.faa'
     shell:'''
     Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
     '''
 
 # blast ------------------------------------------------------------------
 
-rule blastp_croissant_unitigs:
-    output: 'outputs/hu-croissants/unitigs/blast/{croissant}-blastp.tab'
+rule blastp_crumb_bin_unitigs:
+    output: 'outputs/hu-crumbs_bin/unitigs/blast/{crumb_bin}-blastp.tab'
     input: 
         db = 'inputs/blast_db/interesting-aa.faa.psq',
-        query = 'outputs/hu-croissants/unitigs/prokka-all/{croissant}.faa'
+        query = 'outputs/hu-crumbs_bin/unitigs/prokka-all/{crumb_bin}.faa'
     conda: 'env.yml'   
     shell: '''
     touch {input.db}
@@ -194,7 +191,7 @@ rule blastp_croissant_unitigs:
 
 # busco ------------------------------------------------------------
 
-# estimate number of single copy orthologs that are contained in the unitigs, subtracts, and in the assemblies originating from the croissants.
+# estimate number of single copy orthologs that are contained in the unitigs, subtracts, and in the assemblies originating from the crumbs_bin.
 # # https://www.microbe.net/2017/12/13/why-genome-completeness-and-contamination-estimates-are-more-complicated-than-you-think/
 
 rule download_busco_bac:
@@ -208,62 +205,62 @@ rule download_busco_bac:
     '''
 
 rule run_busco_bac_unitigs:
-    output: 'outputs/hu-croissants/unitigs/busco/run_{croissant}_bac'
+    output: 'outputs/hu-crumbs_bin/unitigs/busco/run_{crumb_bin}_bac'
     input: 
-        croissant_in='inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa',
+        crumb_bin_in='inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa',
         busco_db='inputs/busco/bacteria_odb9/'
     conda:  "env.yml"
     shell:'''
-	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
-    mv run_{wildcards.croissant}_bac {output}
+	run_busco -i {input.crumb_bin_in} -o {wildcards.crumb_bin}_bac -l {input.busco_db} -m geno
+    mv run_{wildcards.crumb_bin}_bac {output}
     '''
     
 # SUBTRACTION ################################################################
 
-rule assemble_croissant_subtracts:
-    output: 'outputs/hu-croissants/subtracts/megahit/{croissant}.contigs.fa'
-    input: 'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+rule assemble_crumb_bin_subtracts:
+    output: 'outputs/hu-crumbs_bin/subtracts/megahit/{crumb_bin}.contigs.fa'
+    input: 'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/subtracts/megahit'
+        output_folder = 'outputs/hu-crumbs_bin/subtracts/megahit'
     shell:'''
-    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.croissant} --out-prefix {wildcards.croissant} 
-    mv {wildcards.croissant}/{wildcards.croissant}.contigs.fa {params.output_folder}/{wildcards.croissant}.contigs.fa
-    rm -rf {wildcards.croissant}
+    megahit -r {input} --min-contig-len 142 --out-dir {wildcards.crumb_bin} --out-prefix {wildcards.crumb_bin} 
+    mv {wildcards.crumb_bin}/{wildcards.crumb_bin}.contigs.fa {params.output_folder}/{wildcards.crumb_bin}.contigs.fa
+    rm -rf {wildcards.crumb_bin}
     ''' 
 
 # annotate megahit assemblies and hu genomes with prokka
-rule prokka_megahit_croissants_subtracts:
-    output: 'outputs/hu-croissants/subtracts/megahit-prokka/{croissant}.faa'
-    input:  'outputs/hu-croissants/subtracts/megahit/{croissant}.contigs.fa'
+rule prokka_megahit_crumbs_bin_subtracts:
+    output: 'outputs/hu-crumbs_bin/subtracts/megahit-prokka/{crumb_bin}.faa'
+    input:  'outputs/hu-crumbs_bin/subtracts/megahit/{crumb_bin}.contigs.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/subtracts/megahit-prokka'
+        output_folder = 'outputs/hu-crumbs_bin/subtracts/megahit-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}mhsub
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.crumb_bin} --metagenome --force --locustag {wildcards.crumb_bin}mhsub
     touch {output}
     '''
 
 # annotate unitigs ------------------------------------------------------
     
-rule prokka_unitig_croissants_subtracts:
-    output: 'outputs/hu-croissants/subtracts/unitig-prokka/{croissant}.faa'
-    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.contigs.fa.gz.croissant.fa.sub.fa'
+rule prokka_unitig_crumbs_bin_subtracts:
+    output: 'outputs/hu-crumbs_bin/subtracts/unitig-prokka/{crumb_bin}.faa'
+    input:  'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/subtracts/unitig-prokka'
+        output_folder = 'outputs/hu-crumbs_bin/subtracts/unitig-prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}sub
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.crumb_bin} --metagenome --force --locustag {wildcards.crumb_bin}sub
     touch {output} 
     '''
        
 # combine megahit and unitig annotations ---------------------------------
 
 rule combine_prokka_subtracts:
-    output: 'outputs/hu-croissants/subtracts/prokka-all/{croissant}.faa'
+    output: 'outputs/hu-crumbs_bin/subtracts/prokka-all/{crumb_bin}.faa'
     input:  
-        mh = 'outputs/hu-croissants/subtracts/megahit-prokka/{croissant}.faa',
-        uni = 'outputs/hu-croissants/subtracts/unitig-prokka/{croissant}.faa'
+        mh = 'outputs/hu-crumbs_bin/subtracts/megahit-prokka/{crumb_bin}.faa',
+        uni = 'outputs/hu-crumbs_bin/subtracts/unitig-prokka/{crumb_bin}.faa'
     shell:'''
     Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
     '''
@@ -271,10 +268,10 @@ rule combine_prokka_subtracts:
 # blast ------------------------------------------------------------------
 
 rule blastp_subtracts:
-    output: 'outputs/hu-croissants/subtracts/blast/{croissant}-blastp.tab'
+    output: 'outputs/hu-crumbs_bin/subtracts/blast/{crumb_bin}-blastp.tab'
     input: 
         db = 'inputs/blast_db/interesting-aa.faa.psq',
-        query = 'outputs/hu-croissants/subtracts/prokka-all/{croissant}.faa'
+        query = 'outputs/hu-crumbs_bin/subtracts/prokka-all/{crumb_bin}.faa'
     conda: 'env.yml'   
     shell: '''
     touch {input.db}
@@ -284,24 +281,24 @@ rule blastp_subtracts:
 # ASSEMBLIES ################################################################
 
 # annotate megahit assemblies and hu genomes with prokka
-rule prokka_croissants_assemblies:
-    output: 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
-    input:  'inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa'
+rule prokka_crumbs_bin_assemblies:
+    output: 'outputs/hu-crumbs_bin/assembly/prokka/{crumb_bin}.faa'
+    input:  'inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa'
     conda: 'env.yml'
     params:
-        output_folder = 'outputs/hu-croissants/assembly/prokka'
+        output_folder = 'outputs/hu-crumbs_bin/assembly/prokka'
     shell:'''
-    prokka {input} --outdir {params.output_folder} --prefix {wildcards.croissant} --metagenome --force --locustag {wildcards.croissant}ass
+    prokka {input} --outdir {params.output_folder} --prefix {wildcards.crumb_bin} --metagenome --force --locustag {wildcards.crumb_bin}ass
     touch {output}
     '''
     
 # blast ------------------------------------------------------------------
 
 # rule blastp_assemblies:
-#     output: 'outputs/hu-croissants/assembly/blast/{croissant}-blastp.tab'
+#     output: 'outputs/hu-crumbs_bin/assembly/blast/{crumb_bin}-blastp.tab'
 #     input: 
 #         db = 'inputs/blast_db/interesting-aa.faa.psq',
-#         query = 'outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+#         query = 'outputs/hu-crumbs_bin/assembly/prokka/{crumb_bin}.faa'
 #     conda: 'env.yml'   
 #     shell: '''
 #     touch {input.db}
@@ -309,10 +306,10 @@ rule prokka_croissants_assemblies:
 #     '''
 
 rule blastp_tax_assemblies:
-    output: 'outputs/hu-croissants/assembly/blast/{croissant}-tax-blastp.tab'
+    output: 'outputs/hu-crumbs_bin/assembly/blast/{crumb_bin}-tax-blastp.tab'
     input:
         db='inputs/blast_db/taxonomy-aa.faa.psq',
-        query='outputs/hu-croissants/assembly/prokka/{croissant}.faa'
+        query='outputs/hu-crumbs_bin/assembly/prokka/{crumb_bin}.faa'
     conda: 'env.yml'
     shell:'''
     touch {input.db}
@@ -321,12 +318,12 @@ rule blastp_tax_assemblies:
 # busco ------------------------------------------------------------------
 
 rule run_busco_bac_assembly:
-    output: 'outputs/hu-croissants/assembly/busco/run_{croissant}_bac'
+    output: 'outputs/hu-crumbs_bin/assembly/busco/run_{crumb_bin}_bac'
     input: 
-        croissant_in='inputs/hu-croissants/{croissant}.fa.cdbg_ids.reads.fa.gz.croissant.fa.assembly.fa',
+        crumb_bin_in='inputs/hu-crumbs_bin/{crumb_bin}.fa.cdbg_ids.reads.fa.gz.crumb_bin.fa.assembly.fa',
         busco_db='inputs/busco/bacteria_odb9/'
     conda:  "env.yml"
     shell:'''
-	run_busco -i {input.croissant_in} -o {wildcards.croissant}_bac -l {input.busco_db} -m geno
-    mv run_{wildcards.croissant}_bac {output}
+	run_busco -i {input.crumb_bin_in} -o {wildcards.crumb_bin}_bac -l {input.busco_db} -m geno
+    mv run_{wildcards.crumb_bin}_bac {output}
     '''
