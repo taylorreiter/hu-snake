@@ -11,9 +11,9 @@ Build graphic: snakemake --dag | dot -Tpdf > dag.pdf
 # conda install -c bioconda bioconductor-biostrings
 
 include: "crumb-bin.snakefile"
-include: "crumb-gold.snakefile"
+#include: "crumb-gold.snakefile"
 include: "crumb-bin-kegg.snakefile"
-include: "crumb-gold-kegg.snakefile"
+#include: "crumb-gold-kegg.snakefile"
 
 rule all:
     input:

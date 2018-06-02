@@ -1,5 +1,4 @@
 from snakemake.utils import R
-configfile: "config.yml"
 
 # 1. 0.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa
 # 2. 0.fa.cdbg_ids.contigs.fa.gz.crumb_bin.fa.sub.fa
