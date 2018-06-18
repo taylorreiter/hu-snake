@@ -1,6 +1,7 @@
 rule all: 
     input: 
-        dynamic('outputs/gold_prots/{bin}_gold.fa')
+        dynamic('outputs/gold_prots/{bin}_gold.fa'),
+        dynamic('outputs/anti_gold_prots/{bin}_anti.fa')
 
 rule download_bins:
     output: 'inputs/hu-bins/hu-genomes.tar.gz'
@@ -35,7 +36,9 @@ rule download_kegg:
     '''
 
 rule parse_kegg:
-    output: dynamic('outputs/gold_prots/{bin}.txt')
+    output: 
+        dynamic('outputs/gold_prots/{bin}.txt'),
+        dynamic('outputs/anti_gold_prots/{bin}.txt')
     input: 'outputs/GhostKOALA/all_bins_prokka.ko-tax'
     run:
         import pandas as pd
@@ -50,6 +53,8 @@ rule parse_kegg:
             species = tally.iloc[0, 0]
             hu_bin_pruned = hu_bin.loc[hu_bin[3] == species]
             hu_bin_pruned[0].to_csv(f"outputs/gold_prots/{bin}.txt", index = False, header = False, sep = "\t")
+            hu_bin_pruned_anti = hu_bin.loc[hu_bin[3] != species]
+            hu_bin_pruned_anti[0].to_csv(f"outputs/anti_gold_prots/{bin}.txt", index = False, header = False, sep = "\t")
 
 rule index: 
     output: 'outputs/prokka/{bin}.ffn.fai'
@@ -59,10 +64,24 @@ rule index:
     samtools faidx {input}
     '''
 
-rule faidx:
+rule faidx_gold:
     output: 'outputs/gold_prots/{bin}_gold.fa'
     input:
         key = 'outputs/gold_prots/{bin}.txt',
+        ffn = 'outputs/prokka/{bin}.ffn',
+        fai = 'outputs/prokka/{bin}.ffn.fai'
+    conda: 'env.yml'
+    shell:'''
+    while read inline
+    do
+      samtools faidx {input.ffn} $inline >> {output}
+    done < {input.key}
+    '''
+
+rule faidx_anti:
+    output: 'outputs/anti_gold_prots/{bin}_anti.fa'
+    input:
+        key = 'outputs/anti_gold_prots/{bin}.txt',
         ffn = 'outputs/prokka/{bin}.ffn',
         fai = 'outputs/prokka/{bin}.ffn.fai'
     conda: 'env.yml'
