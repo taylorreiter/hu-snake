@@ -13,7 +13,7 @@ from snakemake.utils import R
 rule download_crumbs_gold:
     output: 'inputs/hu-crumbs_gold/hu-crumbs_gold.tar.gz'
     shell:'''
-    curl -L -o {output} https://osf.io/u5yqf/download
+    curl -L -o {output} https://osf.io/tpwhz/download
     '''
 
 rule unpack_crumbs_gold:
@@ -61,7 +61,7 @@ rule summarize_gold:
         dynamic('inputs/hu-crumbs_gold/{crumb_gold}.fa.cdbg_ids.reads.fa.gz.crumbs.fa.assembly.fa.fai')
     conda: 'env-skimr.yml'
     shell:'''
-    Rscript --vanilla scripts/skim_input.R
+    Rscript --vanilla scripts/skim_input_gold.R
     '''
 
 # UNITIGS ################################################################   
@@ -115,7 +115,7 @@ rule combine_prokka_crumb_gold_unitigs:
         mh = 'outputs/hu-crumbs_gold/unitigs/megahit-prokka/{crumb_gold}.faa',
         uni = 'outputs/hu-crumbs_gold/unitigs/unitig-prokka/{crumb_gold}.faa'
     shell:'''
-    Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
+    Rscript --vanilla scripts/merge_fasta.R {input.mh} {input.uni} {output}
     '''
 
 # SUBTRACTION ################################################################
@@ -159,13 +159,13 @@ rule prokka_unitig_crumbs_gold_subtracts:
        
 # combine megahit and unitig annotations ---------------------------------
 
-rule combine_prokka_subtracts:
+rule combine_prokka_gold_subtracts:
     output: 'outputs/hu-crumbs_gold/subtracts/prokka-all/{crumb_gold}.faa'
     input:  
         mh = 'outputs/hu-crumbs_gold/subtracts/megahit-prokka/{crumb_gold}.faa',
         uni = 'outputs/hu-crumbs_gold/subtracts/unitig-prokka/{crumb_gold}.faa'
     shell:'''
-    Rscript --vanilla merge_fasta.R {input.mh} {input.uni} {output}
+    Rscript --vanilla scripts/merge_fasta.R {input.mh} {input.uni} {output}
     '''
 
 # ASSEMBLIES ################################################################
