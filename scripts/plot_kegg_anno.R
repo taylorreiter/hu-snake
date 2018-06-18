@@ -21,16 +21,17 @@ all_kegg_full <- list.files(args[2], "full.txt$", full.names = T)
 all_kegg <- list.files(args[2], "full.txt$")
 
 all_kegg <- gsub(".ko-ann-full.txt", "", all_kegg)
-kegg_df <- data.frame(locus_tag = NA, geneID = NA, name = NA, score = NA, second = NA, second_score = NA)
+kegg_df <- data.frame(locus_tag = NA, geneID = NA, name = NA, score = NA, second = NA, second_score = NA, bin = NA)
 for(i in 1:(length(all_kegg_full))){
   kegg <- read.csv(all_kegg_full[i], sep = "\t", stringsAsFactors = FALSE, na.strings = "",
-                   col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score")) 
+                   col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score", "bin")) 
   kegg$name <- rep(all_kegg[i], nrow(kegg))
   kegg_df <- rbind(kegg_df, kegg)
 }
 
 # retain only kegg ids for which the score is > 40
 kegg_df <- kegg_df[kegg_df$score > 40, ]
+print("Pruned ko ids at 40")
 
 # Get mappings of KO id to BRITE hierarchy description
 keggo <- kegg_df[ , 2]
@@ -41,6 +42,7 @@ keggo <- keggo[!is.na(keggo)]
 kegg_enrich <- enrichKEGG(gene = keggo, organism = "ko", pvalueCutoff = 1) 
 # grab data.frame of results
 df <- kegg_enrich@result
+print("obtained BRITE hierarchies")
 
 
 # PLOT 1 ------------------------------------------------------------------
@@ -53,6 +55,7 @@ occur <- data.frame(id = rep(df$Description, df$Count))
 sum_df <- occur %>%
   group_by(id) %>%
   tally() 
+print("plot 1 BRITE hierarchies tallied")
 
 # set factor level to order plot by number of occurences
 sum_df$id<- factor(sum_df$id, 
@@ -66,6 +69,8 @@ plot1 <- ggplot(data = sum_df, aes(x = id, y = n)) +
   ylab("Count") +
   ggtitle("Total occurrence of each KEGG Ortholog") +
   coord_flip()
+
+print("Writing plot1")
 
 # write plot
 pdf(args[3], width=8, height=9)
@@ -99,7 +104,9 @@ transfer_mappings <- function(kegg_df, mappings, df_label){
   return(kegg_df)
 }
 
+
 # Transfer mappings
+print("transfer mappings")
 map <- transfer_mappings(kegg_df = kegg_df, mappings = mapping, df_label = "all")
 
 # tally the description; use to set order of the plot
