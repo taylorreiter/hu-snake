@@ -1,7 +1,7 @@
-rule download_kegg_uni:
-    output: 
-        ann = dynamic('outputs/hu-crumbs_bin/unitigs/GhostKOALA/{crumb_bin}.ko-ann-full.txt'),
-        tax = dynamic('outputs/hu-crumbs_bin/unitigs/GhostKOALA/{crumb_bin}.ko-tax')  
+rule download_kegg_uni_crumbs:
+    output:        
+        ann = 'outputs/hu-crumbs_bin/unitigs/GhostKOALA/user_ko_definition.txt',
+        tax = 'outputs/hu-crumbs_bin/unitigs/GhostKOALA/user.out.top'  
     shell:'''
     # download kegg annotation files from osf
     # placeholder:
@@ -9,27 +9,96 @@ rule download_kegg_uni:
     touch {output.tax}
     '''
 
-rule download_kegg_sub:
+rule split_kegg_uni_crumbs:
+    output:
+        ann = dynamic('outputs/hu-crumbs_bin/unitigs/GhostKOALA/{crumb_bin}.ko-ann-full.txt'),
+        tax = dynamic('outputs/hu-crumbs_bin/unitigs/GhostKOALA/{crumb_bin}.ko-tax')  
+    input: 
+        ann = 'outputs/hu-crumbs_bin/unitigs/GhostKOALA/user_ko_definition.txt',
+        tax = 'outputs/hu-crumbs_bin/unitigs/GhostKOALA/user.out.top'  
+    run:
+        import pandas as pd
+        hu = pd.read_table(str(input.ann), header=None)
+        hu[0] = hu[0].replace("user:",  "", regex = True)
+        hu[6] = hu[0].replace("mhuni_[0-9]{5,6}", "", regex = True)
+        hu[6] = hu[6].replace("uni_[0-9]{5,6}", "", regex = True)
+        for sample, hu_bin in hu.groupby(6):
+            hu_bin.to_csv(f"outputs/hu-crumbs_bin/unitigs/GhostKOALA/{sample}.ko-ann-full.txt", index = False, header = False, sep = "\t")
+
+        hu = pd.read_table(str(input.tax), header=None)
+        hu[0] = hu[0].replace("user:",  "", regex = True)
+        hu[7] = hu[0].replace("mhuni_[0-9]{5,6}", "", regex = True)
+        hu[7] = hu[7].replace("uni_[0-9]{5,6}", "", regex = True)
+        for sample, hu_bin in hu.groupby(7):
+            hu_bin.to_csv(f"outputs/hu-crumbs_bin/unitigs/GhostKOALA/{sample}.ko-tax", index = False, header = False, sep = "\t")
+
+
+rule download_kegg_sub_crumbs:
     output: 
+        ann = 'outputs/hu-crumbs_bin/subtracts/GhostKOALA/user_ko_defintion.txt',
+        tax = 'outputs/hu-crumbs_bin/subtracts/GhostKOALA/user.out.top'  
+    shell:'''
+    # download kegg annotation files from osf
+    # placeholder:
+    touch {output.ann}
+    touch {output.tax}
+    '''
+
+rule split_kegg_sub_crumbs:
+    output:
         ann = dynamic('outputs/hu-crumbs_bin/subtracts/GhostKOALA/{crumb_bin}.ko-ann-full.txt'),
         tax = dynamic('outputs/hu-crumbs_bin/subtracts/GhostKOALA/{crumb_bin}.ko-tax')  
+    input: 
+        ann = 'outputs/hu-crumbs_bin/subtracts/GhostKOALA/user_ko_definition.txt',
+        tax = 'outputs/hu-crumbs_bin/subtracts/GhostKOALA/user.out.top'  
+    run:
+        import pandas as pd
+        hu = pd.read_table(str(input.ann), header=None)
+        hu[0] = hu[0].replace("user:",  "", regex = True)
+        hu[6] = hu[0].replace("mhsub_[0-9]{5,6}", "", regex = True)
+        hu[6] = hu[6].replace("sub_[0-9]{5,6}", "", regex = True)
+        for sample, hu_bin in hu.groupby(6):
+            hu_bin.to_csv(f"outputs/hu-crumbs_bin/subtracts/GhostKOALA/{sample}.ko-ann-full.txt", index = False, header = False, sep = "\t")
+
+        tax = pd.read_table(str(input.tax), header=None)
+        tax[0] = tax[0].replace("user:",  "", regex = True)
+        tax[7] = tax[0].replace("mhsub_[0-9]{5,6}", "", regex = True)
+        tax[7] = tax[7].replace("sub_[0-9]{5,6}", "", regex = True)
+        for sample, tax_bin in tax.groupby(7):
+            tax_bin.to_csv(f"outputs/hu-crumbs_bin/subtracts/GhostKOALA/{sample}.ko-tax", index = False, header = False, sep = "\t")
+
+
+rule download_kegg_assembly_crumbs:
+    output: 
+        ann = 'outputs/hu-crumbs_bin/assembly/GhostKOALA/user_ko_definition.txt',
+        tax = 'outputs/hu-crumbs_bin/assembly/GhostKOALA/user.out.top'  
     shell:'''
     # download kegg annotation files from osf
     # placeholder:
     touch {output.ann}
     touch {output.tax}
     '''
-    
-rule download_kegg_assembly:
-    output: 
+
+rule split_kegg_assembly_crumbs:
+    output:
         ann = dynamic('outputs/hu-crumbs_bin/assembly/GhostKOALA/{crumb_bin}.ko-ann-full.txt'),
         tax = dynamic('outputs/hu-crumbs_bin/assembly/GhostKOALA/{crumb_bin}.ko-tax')  
-    shell:'''
-    # download kegg annotation files from osf
-    # placeholder:
-    touch {output.ann}
-    touch {output.tax}
-    '''
+    input: 
+        ann = 'outputs/hu-crumbs_bin/assembly/GhostKOALA/user_ko_definition.txt',
+        tax = 'outputs/hu-crumbs_bin/assembly/GhostKOALA/user.out.top'  
+    run:
+        import pandas as pd
+        hu = pd.read_table(str(input.ann), header=None)
+        hu[0] = hu[0].replace("user:",  "", regex = True)
+        hu[6] = hu[0].replace("ass_[0-9]{5,6}", "", regex = True)
+        for sample, hu_bin in hu.groupby(6):
+            hu_bin.to_csv(f"outputs/hu-crumbs_bin/assembly/GhostKOALA/{sample}.ko-ann-full.txt", index = False, header = False, sep = "\t")
+
+        tax = pd.read_table(str(input.tax), header=None)
+        tax[0] = tax[0].replace("user:",  "", regex = True)
+        tax[7] = tax[0].replace("ass_[0-9]{5,6}", "", regex = True)
+        for sample, tax_bin in tax.groupby(7):
+            tax_bin.to_csv(f"outputs/hu-crumbs_bin/assembly/GhostKOALA/{sample}.ko-tax", index = False, header = False, sep = "\t")
 
 # UNITIGS ------------------------------------------------
 
