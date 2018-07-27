@@ -12,13 +12,13 @@ knitr::opts_knit$set(root.dir = normalizePath("../"))
 
 ```{r libraries}
 library(Biostrings)
-library(ggplot2)
-library(dplyr)
+library(tidyverse)
 library(ggthemes)
 library(gridExtra)
 library(annotate)
 library(Rsamtools)
 library(rentrez)
+library(knitr)
 ```
 
 ```{r notes}
@@ -47,39 +47,16 @@ We analyzed donut unitigs, crumb unitigs, donut assemblies, and crumb assemblies
 
 ### The crumb assemblies make the most sense to analyze
 
-+ Both donut unitigs and crumbs unitigs are highly fragmented. 
-
-```{r calc_histograms}
+```{r read_files}
 donut_files <- list.files(path = "inputs/hu-s1_k31_r1_search_oh0_may20/", pattern = ".contigs.fa.gz.donut.fa$", full.names = T)
 crumb_files <- list.files(path = "inputs/hu-s1_k31_r1_search_oh0_may20/", pattern = ".contigs.fa.gz.crumbs.fa$", full.names = T)
     
 donuts <- lapply(donut_files, readDNAStringSet)
 crumbs <- lapply(crumb_files, readDNAStringSet)
-    
-donuts_all <- do.call("c", donuts)
-donuts_char <- as.data.frame(nchar(donuts_all))
-donut_hist <- ggplot(donuts_char, aes(x = nchar(donuts_all))) + geom_histogram() +
-  theme_pander() +
-  scale_y_log10() +
-  ylab("log10(count)") +
-  xlab("length in nucleotides") +
-  ggtitle("Length of unitigs in donuts")
+```    
 
-crumbs_all <- do.call("c", crumbs)
-crumbs_char <- as.data.frame(nchar(crumbs_all))
-crumb_hist <- ggplot(crumbs_char, aes(x = nchar(crumbs_all))) + geom_histogram() +
-  theme_pander() +
-  scale_y_log10() +
-  ylab("log10(count)") +
-  xlab("length in nucleotides") +
-  ggtitle("Length of unitigs in crumbs")
-```
+There are small differences between donut unitigs and crumb unitigs.
 
-```{r plot_histograms, include = TRUE, fig.height=3, fig.width=7}
-grid.arrange(donut_hist, crumb_hist, ncol = 2)
-```
-
-+ there are small differences between donut unitigs and crumb unitigs
 ```{r calc_uni}
 crumb_uni_total <- rep(NA, length(crumbs))
 donut_uni_total <- rep(NA, length(crumbs))
@@ -150,7 +127,33 @@ uni_plot
 nuc_plot
 ```
 
-+ these small differences lead to large differences in the number of reads associated with donuts and with crumbs.
+Both donut unitigs and crumbs unitigs are highly fragmented. Fragments are difficult to analyze because they give little biological signal, while longer nucleotide sequences give more biological signal. It therefore made more sense to analyze an assembly of the unitigs. 
+
+```{r calc_histograms}
+donuts_all <- do.call("c", donuts)
+donuts_char <- as.data.frame(nchar(donuts_all))
+donut_hist <- ggplot(donuts_char, aes(x = nchar(donuts_all))) + geom_histogram() +
+  theme_pander() +
+  scale_y_log10() +
+  ylab("log10(count)") +
+  xlab("length in nucleotides") +
+  ggtitle("Length of unitigs in donuts")
+
+crumbs_all <- do.call("c", crumbs)
+crumbs_char <- as.data.frame(nchar(crumbs_all))
+crumb_hist <- ggplot(crumbs_char, aes(x = nchar(crumbs_all))) + geom_histogram() +
+  theme_pander() +
+  scale_y_log10() +
+  ylab("log10(count)") +
+  xlab("length in nucleotides") +
+  ggtitle("Length of unitigs in crumbs")
+```
+
+```{r plot_histograms, include = TRUE, fig.height=3, fig.width=7}
+grid.arrange(donut_hist, crumb_hist, ncol = 2)
+```
+
+However, the small differences observed between the donuts and the crumbs led to large differences in the number of reads associated with donuts and with crumbs, and presumably the amount of sequence in the assemblies (I haven't tested this presumption yet, but can).
 
 ```{r calc_reads}
 # Read in data
@@ -197,7 +200,7 @@ plot_reads <- ggplot(reads, aes(x = bin, y = number, fill = read_type)) +
 plot_reads
 ```
 
-+ The crumb assemblies are the most conservative thing to analyze, and so this writeup focuses on them. 
+I concluded that the crumb assemblies are the most conservative thing to analyze, and so this writeup focuses on them. 
 
 ### Taxonomic classification
 
@@ -205,46 +208,19 @@ We first sought to determine whether the taxonomic signal of the crumb assemblie
 
 #### Marker Genes
 
-Taxonomic classification can be performed using marker genes. Marker genes are conserved, single-copy sequences found in diverse organisms. Many marker genes have been sequenced which makes taxonomic classification via amino acid identity feasible. Marker genes are also used to estimate species abundance in a metagenome via read depth given that they are single-copy genes in genomes (see https://doi.org/10.1038/nmeth.2693). Some binning technique take advantage of marker genes to co-segregate taxnomically similar sequences. 
+Taxonomic classification can be performed using marker genes. Marker genes are conserved, single-copy sequences found in diverse organisms. Many marker genes have been sequenced which makes taxonomic classification via amino acid identity feasible. Marker genes are also used to estimate species abundance in a metagenome via read depth given that they are single-copy genes in genomes (see https://doi.org/10.1038/nmeth.2693). Some binning techniques take advantage of marker genes to co-segregate taxnomically similar sequences. 
 
 Hu et al. used amino acid sequences of the marker genes *gyrA*, *gyrB*, and *recA* (bacteria only) to perform taxonomic assignment of bins. 
 
-Some crumb assemblies contain marker genes. Some crumb assembly marker genes were not annotated in the query (meaning the query was incomplete). This is interesting because 
-1. Test whether crumb assembly marker gene taxonomic classification matches Hu et al. taxonomic classifications.
-2. Because marker genes are present in approximately all microorganisms, the presence of marker genes in the crumb assemblies demonstrates that our method increases genome completeness.
-3. Two marker gene sequences in the crumb assemblies were also represented in the queries by sequences that were annotated as the same marker genes. This allowed us to assess how different the crumb assembly marker gene sequences were from query  marker gene sequences.
+Some crumb assemblies contain marker genes (Table 1). we identified marker genes using the KEGG  ghost Kawala algorithm on predicted amino acid sequences in the crumb assemblies. We explored taxonomy of the amino acid and nucleotide sequences of the marker genes using the blastp  and blast in algorithms against the NCBI and nr/nt databases. This revealed the following:
+1. Crumb assembly marker gene sequence  taxonomic classification generally agrees with the Hu et al classification of queries.
+2. Marker gene sequences in the crumb assemblies are similar but not identical to marker gene sequences and the queries.
+3. In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness.
 
-In general, we noted that taxonomic assignment using the crumb assembly marker gene sequences agreed with that of Hu et al.
 
-We used KEGG GhostKOALA on prokka-predicted amino acid sequences from the crumb assemblies to identify marker gene sequences. We found that nine crumb assemblies contained at least one of the three marker genes used for taxonomic classification by Hu et al.: *gyrA* (12 observations), *gyrB* (eight observations), or *recA* (one observation) (**Table 1**). 
+Table 1: Taxonomic marker genes identified in crumb assemblies from the Hu SB1 sample. 
 
-Table 1: Taxonomic marker genes identified in crumb assemblies from the Hu SB1 sample. We detected marker gene presence by using the KEGG GhostKoala algorithm on prokka-predicted amino acid sequences from the crumb assemblies. We assigned 
- 
-**bin**|**organism**|**name**|**score**|**In Hu bin?**|**best nuc match**|**best aa match**|
-:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:------:|
-hu-genome21|Candidate division WS6 bacterium 34\_10 |*gyrA*|80|No
-hu-genome21|Candidate division WS6 bacterium 34\_10 |*gyrB*|66|No
-hu-genome36|Desulfotomaculum sp. 46\_296 |*gyrA*|628|No
-hu-genome36|Desulfotomaculum sp. 46\_296 |*gyrA*|95|No
-hu-genome36|Desulfotomaculum sp. 46\_296 |*recA*|69|No
-hu-genome10|Marinimicrobia bacterium 46\_43 |*gyrB*\*|425|No
-hu-genome10|Marinimicrobia bacterium 46\_43 |*gyrA*\*|146|No
-hu-genome35|Marinimicrobia bacterium 46\_47 |*gyrB*\*|425|No
-hu-genome35|Marinimicrobia bacterium 46\_47 |*gyrA*\*|146|Yes
-hu-genome24|Methanocalculus sp. 52\_23 |*gyrA*|238|No
-hu-genome30|Methanoculleus marisnigri 62\_101|*gyrB*\*|214|No
-hu-genome30|Methanoculleus marisnigri 62\_101|*gyrB*\*|210|No
-hu-genome30|Methanoculleus marisnigri 62\_101|*gyrA*\*|127|Yes
-hu-genome02|Methanoculleus marisnigri 63\_40|*gyrB*\*|214|No
-hu-genome02|Methanoculleus marisnigri 63\_40 |*gyrB*\*|210|No
-hu-genome02|Methanoculleus marisnigri 63\_40|*gyrA*\*|127|Yes
-hu-genome38|Parcubacteria bacterium 33\_209 |*gyrB*|335|No
-hu-genome38|Parcubacteria bacterium 33\_209 |*gyrA*|103|No
-hu-genome38|Parcubacteria bacterium 33\_209 |*gyrA*|97|No
-hu-genome33|Synergistales bacterium 53\_16 |*gyrA*\*|63|No
-hu-genome03|Synergistales bacterium 54\_9 |*gyrA*\*|63|No
-\* crumb assembly overlap
-
+```{r read_crumb_kegg_anno}
 # 1. Find gyrA, gyrB, and recA sequences in the crumb assemblies by parsing the KEGG GhostKoala output
 # 2. write gyrA, gyrB, and recA nucleotide sequences to a fasta file
 # 3. write gyrA, gyrB, and recA amino acid sequences to a fasta file
@@ -252,7 +228,6 @@ hu-genome03|Synergistales bacterium 54\_9 |*gyrA*\*|63|No
 # 5. BLAST amino acid sequences against NCBI
 # 6. Report in a table. 
 
-```{r read_crumb_kegg_anno}
 # read in crumb data
 crumb_full <- list.files("outputs/hu-crumbs_bin/assembly/GhostKOALA/", "full.txt$", full.names = T)
 crumb_kegg <- list.files("outputs/hu-crumbs_bin/assembly/GhostKOALA/", "full.txt$")
@@ -347,8 +322,13 @@ for(i in 1:length(nucs)){
   blastdf$query <- rep(names(nucs[[i]]), nrow(blastdf))
   blast_nuc <- rbind(blast_nuc, blastdf)
 }
-  # right doc to avoid costly NCBI queries.
+
+# if file doesn't exist, write to doc to avoid costly NCBI queries.
+if(!file.exists("blast_nuc.csv")) {
   write.csv(blast_nuc, "blast_nuc.csv", quote = F, row.names = F)
+} else {
+  blast_nuc <- read.csv("blast_nuc.csv")
+}
 ```
 
 ```{r parse_nuc_rentrez}
@@ -382,54 +362,46 @@ blast_nuc$name <- gsub("(ass_)([0-9]{5})", "", blast_nuc$query)
 info_blast <- left_join(blast_nuc, info, by = "name")
 ```
 
-
-
 ```{r blast_crumb_marker_genes_aas}
-indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa")   # create an index of amino acid seqs
-faa = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa") # open connection
-graa = as(seqinfo(faa), "GRanges") # make a GRanges object of the faa file
+indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa") 
+faa = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa")
+graa = as(seqinfo(faa), "GRanges") 
 
 get_aas <- function(seq_name, GRanges, FaFile){
-              idxaa = pmatch(seq_name, names(GRanges)) # match the string name of desired amino acid sequence.
-              seqaa = getSeq(FaFile, GRanges[idxaa], as="AAStringSet") # get sequences from file. 
+              idxaa = pmatch(seq_name, names(GRanges)) 
+              seqaa = getSeq(FaFile, GRanges[idxaa], as="AAStringSet") 
               return(seqaa)
 }
 
 aas <- lapply(X = crumb_marker[ , 1], 
-              FUN = function(x) get_aas(seq_name = x, GRanges = graa, FaFile = faa)) #  apply to all marker gene sequences.
+              FUN = function(x) get_aas(seq_name = x, GRanges = graa, FaFile = faa)) .
 
-#  initiate empty data frame for for loop results.
 blast_aas <- data.frame('qseqid' = character(0),  'sgi' = character(0), 'sacc' = character(0), 'pident' = numeric(0), 'length' = numeric(0), 'bitscore' = numeric(0), 'evalue' = numeric(0), 'query' = character(0))
 
 for(i in 1:length(aas)){
   if(file.exists("blast_aa.csv")){
-   next #  if file exists do not run for loop.
+   next
   }
-  print(i)
-  #  run blast via the command line but save STD out to object to blastout.
   blastoutaa <- system2('/Users/taylorreiter/miniconda3/envs/sandbox/bin/blastp',
                     c('-db', "'nr'", '-outfmt', sprintf('"6 %s"', paste(collapse=' ', blastf6)),
                       '-remote', '-word_size', "'6'", '-gapopen', "'11'", '-gapextend', "'1'", '-window_size',
                       "'40'", '-matrix', "'BLOSUM62'", '-comp_based_stats', '"2"', '-max_target_seqs', "'10'"),
                     input = as.character(aas[[i]][1]), stdout = TRUE)
-                    # run blast in from the command line.
-                    # input sequences in vector nucs.
-                    # Write to STD out as  character vector.
   
-  # parse blastout as a table and assign names to it
   blastdfaa <- `names<-`(read.table(quote="", sep='\t', textConnection(blastoutaa)), blastf6)
-  # add query name to blastdf
   blastdfaa$query <- rep(names(aas[[i]]), nrow(blastdfaa))
   blast_aas <- rbind(blast_aas, blastdfaa)
 }
 
-# right doc to avoid costly NCBI queries.
-write.csv(blast_aas, "blast_aa.csv", quote = F, row.names = F)
-write.table(blast_aas$sacc, "blast_aa_sacc.txt", col.names = F, row.names = F, quote = F)
+if(!file.exists("blast_aa.csv")) {
+  write.csv(blast_nuc, "blast_aa.csv", quote = F, row.names = F)
+} else {
+  blast_aas <- read.csv("blast_aas.csv")
+}
 ```
 
 
-```{r}
+```{r parse_aa_rentrez}
 block2 <- function(i){
           pid_species <- entrez_summary(db="protein", id = i)
           Sys.sleep(2) # sleep; don't overwhelm NCBI server
@@ -437,7 +409,7 @@ block2 <- function(i){
 }
 
 # apply to all unique nuids
-pid_names <- lapply(unique(blast_aas$sacc), block)
+pid_names <- lapply(unique(blast_aas$sacc), block2)
 # extract species names from retrieved data
 pid_species <- sapply(pid_names, "[[", 26)
 # make a dataframe of nuid and species
@@ -445,19 +417,28 @@ pid_df <- as.data.frame(unique(as.character(blast_aas$sacc)))
 pid_df$species <- pid_species
 
 # merge dataframe with nuid species
-blast_nuc <- merge(blast_nuc, nuid_df, by.x = "sacc", by.y = "unique(as.character(blast_nuc$sacc))")
+blast_aas <- merge(blast_aas, pid_df, by.x = "sacc", by.y = "unique(as.character(blast_aas$sacc))")
 
 # retain only best blast hit
-blast_nuc <- blast_nuc[order(blast_nuc$query, blast_nuc$bitscore), ]
+blast_aas <- blast_aas[order(blast_aas$query, blast_aas$bitscore), ]
 # Select the last row by id
-blast_nuc <- blast_nuc[!duplicated(blast_nuc$query, fromLast=TRUE), ]
-
-# merge with hu-info
-info <- read.csv("sandbox/hu_info.csv")
-
+blast_aas <- blast_aas[!duplicated(blast_aas$query, fromLast=TRUE), ]
+# modify column names to distinguish aa from nuc.
+colnames(blast_aas)[c(1:7, 9)] <- paste0(colnames(blast_aas)[c(1:7, 9)], "_aa")
+colnames(blast_aas)[8] <- 'query'
+colnames(blast_aas) <- c("sacc_aa","qseqid_aa", "sgi_aa","pident_aa","length_aa","bitscore_aa", "evalue_aa",   "query","species_aa" )
 # parse blast queries to bin name
-blast_nuc$name <- gsub("(ass_)([0-9]{5})", "", blast_nuc$query)
-info_blast <- left_join(blast_nuc, info, by = "name")
+info_blast <- left_join(blast_aas, info_blast, by = "query")
+```
+
+```{r display_marker_gene_table}
+# join with marker gene info
+crumb_marker$gene <- gsub("(; DNA gyrase subunit )([AB])( \\[EC:5.99.1.3\\])", "", crumb_marker$name)
+info_blast <- left_join(info_blast, crumb_marker, by = c("query" = "locus_tag"))
+info_blast_small <- info_blast[ , c(1, 4:10, 13:17, 20, 55, 50)]
+info_blast_small <- info_blast_small[ , c(14, 6, 15:16, 7, 1:5,13, 8:12)]
+colnames(info_blast_small) <- c("hu_taxonomy", "crumb_assembly", "marker_gene", "gk_score", "AA_species", "AA_accession", "AA_pident", "AA_length", "AA_bitscore", "AA_evalue", "N_species", "N_accession", "N_pident", "N_length", "N_bitscore", "N_evalue")
+kable(info_blast_small)
 ```
 
 
@@ -476,7 +457,7 @@ The crumb assembly from hu-genome36 had an especially strong match to *gyrA* (sc
 
 We also recovered marker genes from the crumb assembly of hu-genome38, a near-complete genome from a candidate phlya binned by Hu et al. The top amino acid hit was to the hu-genome38 bin *Parcubacteria bacterium* (identity 92%). Most other protein matches were to candidate phlya. The best nucleotide match was to *Sneathia amnii* strain SN35 with 70% identity, however *S. amnii* appears to be binned from a metagenome.
 
-```{r deprecated}
+```{r deprecated, eval = FALSE}
 # BLAST with annotate --------
 # nuc_matches <- lapply(X = nucs, FUN = function(x) blastSequences(x = x, database = "nt", hitListSize = 10, program = "blastn",
 # timeout=120, as = "data.frame"))
