@@ -15,6 +15,8 @@ library(Biostrings)
 library(tidyverse)
 library(ggthemes)
 library(gridExtra)
+library(grid)
+library(png)
 library(annotate)
 library(Rsamtools)
 library(rentrez)
@@ -212,13 +214,12 @@ Taxonomic classification can be performed using marker genes. Marker genes are c
 
 Hu et al. used amino acid sequences of the marker genes *gyrA*, *gyrB*, and *recA* (bacteria only) to perform taxonomic assignment of bins. 
 
-Some crumb assemblies contain marker genes (Table 1). we identified marker genes using the KEGG  ghost Kawala algorithm on predicted amino acid sequences in the crumb assemblies. We explored taxonomy of the amino acid and nucleotide sequences of the marker genes using the blastp  and blast in algorithms against the NCBI and nr/nt databases. This revealed the following:
-1. Crumb assembly marker gene sequence  taxonomic classification generally agrees with the Hu et al classification of queries.
-2. Marker gene sequences in the crumb assemblies are similar but not identical to marker gene sequences and the queries.
-3. In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness.
+Some crumb assemblies contain marker genes (Table 1). We identified marker genes using the KEGG GhostKOALA algorithm on predicted amino acid sequences in the crumb assemblies. We explored taxonomy of the amino acid and nucleotide sequences of the marker genes using the blastp and blastn algorithms against the NCBI and nr/nt databases (7/27/18). This revealed the following:
+1. Crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries.  
+2. Marker gene sequences in the crumb assemblies are similar but not identical to marker gene sequences and the queries.  
+3. In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness.  
 
-
-Table 1: Taxonomic marker genes identified in crumb assemblies from the Hu SB1 sample. 
+**Table 1**: Taxonomic marker genes identified in crumb assemblies from the Hu SB1 sample. *Note that because some queries were closely related to each other, some identical crumb assembly sequences are associated with two queries*
 
 ```{r read_crumb_kegg_anno}
 # 1. Find gyrA, gyrB, and recA sequences in the crumb assemblies by parsing the KEGG GhostKoala output
@@ -282,7 +283,7 @@ crumb_marker <- kegg_df %>%
                   filter(geneID %in% c(gyrA, gyrB, recA))
 ```
 
-```{r blast_crumb_marker_genes_nucs}
+```{r blast_crumb_marker_genes_nucs, include = FALSE}
 indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.ffn")   # create an index of file 'foo.fasta'
 ffn = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.ffn")
 gr = as(seqinfo(ffn), "GRanges")
@@ -362,7 +363,7 @@ blast_nuc$name <- gsub("(ass_)([0-9]{5})", "", blast_nuc$query)
 info_blast <- left_join(blast_nuc, info, by = "name")
 ```
 
-```{r blast_crumb_marker_genes_aas}
+```{r blast_crumb_marker_genes_aas, include = FALSE}
 indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa") 
 faa = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa")
 graa = as(seqinfo(faa), "GRanges") 
@@ -374,7 +375,7 @@ get_aas <- function(seq_name, GRanges, FaFile){
 }
 
 aas <- lapply(X = crumb_marker[ , 1], 
-              FUN = function(x) get_aas(seq_name = x, GRanges = graa, FaFile = faa)) .
+              FUN = function(x) get_aas(seq_name = x, GRanges = graa, FaFile = faa))
 
 blast_aas <- data.frame('qseqid' = character(0),  'sgi' = character(0), 'sacc' = character(0), 'pident' = numeric(0), 'length' = numeric(0), 'bitscore' = numeric(0), 'evalue' = numeric(0), 'query' = character(0))
 
@@ -382,6 +383,7 @@ for(i in 1:length(aas)){
   if(file.exists("blast_aa.csv")){
    next
   }
+  print(i)
   blastoutaa <- system2('/Users/taylorreiter/miniconda3/envs/sandbox/bin/blastp',
                     c('-db', "'nr'", '-outfmt', sprintf('"6 %s"', paste(collapse=' ', blastf6)),
                       '-remote', '-word_size', "'6'", '-gapopen', "'11'", '-gapextend', "'1'", '-window_size',
@@ -394,12 +396,11 @@ for(i in 1:length(aas)){
 }
 
 if(!file.exists("blast_aa.csv")) {
-  write.csv(blast_nuc, "blast_aa.csv", quote = F, row.names = F)
+  write.csv(blast_aas, "blast_aa.csv", quote = F, row.names = F)
 } else {
-  blast_aas <- read.csv("blast_aas.csv")
+  blast_aas <- read.csv("blast_aa.csv")
 }
 ```
-
 
 ```{r parse_aa_rentrez}
 block2 <- function(i){
@@ -441,21 +442,118 @@ colnames(info_blast_small) <- c("hu_taxonomy", "crumb_assembly", "marker_gene", 
 kable(info_blast_small)
 ```
 
+The crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries. At the amino acid level, the genus-level classification was always in agreeance with the Hu et al classification. However, often times the best match was to a marker gene sequence binned by Hu et al (see next paragraph). At the nucleotide level, the taxonomic classification of the crumb assemblies matched the Hu et al taxonomic assignments when the percent identity was above 85%. Matches below this percent identity threshold were candidate phyla (*Marinimicrobia bacterium* 46_43 and *Parcubacteria bacterium* 33_209). Candidate phlya are organisms for which no cultured isolates exist, but for which sequencing evidence supports their inclusion in different phlya than known organisms. The low percent identity (~60%) of marker genes in the query neighborhoods to other known organisms supports their classification as candidate phyla. 
 
-After identifying marker gene sequences, we wanted to find the most similar amino acid and nucleotide sequences in the NCBI database to perform taxonomic classification. We BLASTed both the nucleotide and amino acid sequences against the NCBI nr/nt database (06/25/18).  
+The nr/nt database includes our query sequences because the Hu et al bins were deposited in GenBank. Our BLAST search therefore also checked whether the crumb assembly marker gene sequences were similar at the amino acid or nucleotide level to sequences in the Hu bins. Eight of 14 crumb assembly marker gene sequences matched most closely to a query amino acid sequence. However, percent identity ranged from 89.565% - 97.101%, indicating that the sequences are closely related to but different from those found in the queries. These sequences likely arise from strains in the metagenome. At the nucleotide level, no crumb assembly marker gene sequences matched most closely to query nucleotide sequencing, further demonstrating that the sequences recovered in the crumb assemblies are taxonomically similar to but different from the query sequences. These results support the liklihood that there are more strains present in the crumb assemblies than are represented in the queries. 
 
-Because the nr/nt database includes the Hu bins, BLASTing also checked whether the marker gene sequences we obtained in the crumb assemblies were similar at the amino acid or nucleotide level to sequences in the Hu bins. From the sequences we investigated, many had high amino acid identity to sequences in Hu et al. bins, however the nucleotide sequences were sufficiently different to return no match within the top 100 matches in a BLAST against the nt database. However, this was not always true, as in some cases there was no match at the amino acid level to the Hu bin. This likely indicates that strain variants are present int eh samples that are not captured by current assembly and binning techniques. 
- 
+In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness. Queries *Methanoculleus marisnigri* isolate 63_41 (hu-genome02), *Methanoculleus marisnigri* isolate 62_101 (hu-genome30), and *Marinimicrobia bacterium 46_47* (hu-genome35) each contained a *gyrA* sequence. However the six other *gyrA* sequences and seven *gyrB* sequences observed in the crumb assemblies increased completeness of the query by associating these sequences with other sequences in the query. These new associations could be especially useful for taxonomic placement of *Parcubacteria bacterium* 33_209 (hu-genome38), a near complete genome belonging to a candidate phyla.
+
+#### Taxonomic signal from non-marker genes
+
+We also investigated the taxonomic signal of non-marker genes by using the GhostKOALA algorithm on predicted proteins in the crumb assemblies. We noted three trends:
+1. The taxonomic signal from archaeal crumb assemblies is accurate and consistent for predicted genes.  
+2. The taxonomic signal for predicted genes in bacterial crumb assemblies did not agree with all query assignments.
+3. The taxonomic signal is clear at the kingdom level for predicted genes in crumb assemblies of candidate phyla.  
+
+For archaeal queries, the majority of genes were annotated at the correct genus level (**figure 1**). There were a handful of genes in each crumb assembly that were annotated as a different genus of methanogenic archaea or as bacteria. Closer inspection of the bacterial annotations revealed that although there was no strong match in KEGG, archaeal sequence was a better match than bacterial sequence when BLASTed against RefSeq. This may reflect horizontal gene transfer, however we did not investigate this hypothesis further (e.g. via site rate heterogeneity tests). 
+
+```{r fig1, fig.width = 7, fig.height=3}
+img <- readPNG("docs/figures/hu-genome02.png")
+grid.raster(img)
+```
+
+**Figure 1:** An example of the taxonomic signal from the amino acid sequences of predicted genes in the crumb assembly of *Methanoculleus marisnigri* isolate 63_41 (hu-genome02). We performed taxonomic classification with KEGG GhostKOALA.
+
+For bacterial queries, the taxonomic signal of non-marker genes did not agree with the all query assignments. For example, the taxonomic signal matched at the family level for queries hu-genome14, hu-genome29, and hu-genome36 (all assigned as *Desulfotomaculum*). The second most abundant annotation for predicted genes in the crumb assemblies matched the *Desulfotomaculum*, but *Pelotomaculum* was the best match (**figure 2**). *Desulfotomaculum* and *Pelotomaculum* are in the same family, *Peptococcaceae*. 
+
+```{r fig2, fig.width = 7, fig.height=3}
+img <- readPNG("docs/figures/hu-genome29.png")
+grid.raster(img)
+```
+
+**Figure 2:** An example of the taxonomic signal from the amino acid sequences of predicted genes in the crumb assembly of *Desulfotomaculum sp.* (hu-genome29). The most abundant prediction was for genus *Pelotomaculum*. We performed taxonomic classification with KEGG GhostKOALA.
+
+There was disagreement between the taxonomic assignment of queries hu-genome25 and hu-genome40 and the taxonomic signal of predicted proteins in the crumb assemblies. These queries were assigned as class *Anaerolineae*, however a genus within this class was the second most abundant taxonomic annotation. The most abundant was *Brevibacterium*, which is in a different phylum than *Anaerolineae* (*Actinobacteria* vs. *Chloroflexi*). 
+
+Interestingly, the queries hu-genome03, hu-genome12, hu-genome31, and hu-genome33 were assigned to the order *Synergistales*, however all four had strong matches to the genus *Thermovirga*, a genus within order *Synergistales*. 
+
+Lastly, we observed that the taxonomic signal is clear at the kingdom level for predicted genes in crumb assemblies of queries assigned to candidate phyla. This was true for queries hu-genome10, hu-genome13, hu-genome21, hu-genome27, hu-genome28, hu-genome34, hu-genome35, hu-genome37, and hu-genome38, all of which were candidate phyla (**figure 3**). No candidate phyla had a strong taxonomic signal, supporting their assignment into new taxonomic classifications. We observed a similar weak taxonomic signal for queries hu-genome23 and hu-genome39 which were not candidate phyla. 
+
+```{r fig3, fig.width = 7, fig.height=3}
+img <- readPNG("docs/figures/hu-genome34.png")
+grid.raster(img)
+```
+
+**Figure 3:** An example of the taxonomic signal from the amino acid sequences of predicted genes hu-genome34 crumb assembly. hu-genome34 bin was classed as *Atribacteria bacterium*, a candidate phlya. We performed taxonomic classification with KEGG GhostKOALA.
+
+These results support that the taxonomy of predicted proteins in the crumb assemblies loosely matches that of the queries. Taxonomic inconsistencies could result from incomplete databases (KEGG), horizontal gene transfer, and from the novel nature of these sequencies (i.e. some of these sequences might not closely resemble anything that has been sequenced before, and thus taxonomic classification of non-marker genes is a difficult problem.)
+
+### Functional characterization
+
+#### Crumb assemblies increase functional content associated with queries
+
+The crumb assemblies increased functional content associated with the queries by 11% (**figure 4**). The queries collectively contained 29,897 in annotated proteins, while the crumb assemblies contained 3,412 annotated proteins. No annotated protein in any crumb assembly occurred in a BRITE hierarchy that was not represented in the query, meaning that we recover genes from pathways that are already represented in the queries.
+
+The crumb assemblies do not contain an even distribution of annotated proteins. *Methanoculleus marisnigri* isolate 63_41 (hu-genome02) had 475 annotated proteins, while *Microgenomates bacterium* 39_7 (hu-genome19) and Candidate division *TA06 bacterium* 32_111 (hu-genome37) had none. Because confident annotations rely on the KEGG database, it is possible that no predicted proteins were annotated for these latter two genomes given that they belong to candidate phlya.
+
+```{r fig4, fig.width = 6, fig.height=7}
+img <- readPNG("docs/figures/bin-crumb-assembly-function2.png")
+grid.raster(img)
+```
+
+**Figure 4:** KEGG ortholog BRITE hierarchy categories for prokka-predicted, GhostKOALA annotated proteins in the crumb assemblies and in the queries (bins). Cut off score 100.
+
+#### Crumb assemblies contain predicted genes with biologically important roles
+
+Bacteria and archaea seem to contribute approximately equal amounts of functional content from crumb assemblies (**figure 5**). Carbon metabolism was the second most abundant BRITE hierarchy category, which further supports the degraded state of this reservoir, as reported by Piceno et al. 2014.   
+
+```{r fig5, fig.width = 6, fig.height=7}
+img <- readPNG("docs/figures/kegg-all-col-kingdom.png")
+grid.raster(img)
+```
+
+**Figure 5:** KEGG ortholog BRITE hierarchy categories for prokka-predicted, GhostKOALA annotated proteins in the crumb assemblies. Cut off score 100.
+
+
+There are also predicted genes that are important to the biology of the oil reservoir. Methane production and carbon degradation are important in oil reservoirs, and these are abundantly predicted in the crumb assemblies (**figure 6**).
+
+```{r fig6, fig.width = 4, fig.height=3}
+img <- readPNG("docs/figures/an_ass.png")
+grid.raster(img)
+```
+
+**Figure 6:** Presence of biologically important genes, as defined in An et al. 2013. Methanogenic processes were most abundant, while dearomatization processes were second. All processes were anaerobic.
+
+#### Nitrogenase genes
+
+Our approach also built upon observations of nitrogenase genes identified by Hu et al. We observed five additional nitrogenase gene sequences coding for portions of *nifH*, *glnB*, and *nifE*. All are located in crumb assemblies of queries previously identified as containing nitrogen fixation genes. Both *Methanocalculus sp. 52_23* (hu-genome24) and *Methanoculleus marisnigri* (hu-genome02/30) contained a first observation of *glnB*, a nitrogen metabolism regulatory protein not previously observed in the SB1 sample but observed in a methanogenic archaea from the K3 sample. These observations support the Hu et al. conclusion that the majority of nitrogen fixation genes occur in methanogenic *Archaea* as opposed to *Bacteria*, in contrast to most other ecosystems. 
+
+**Table 2**
+
+|query bin | organism | Crumb N. F.\* gene(s) | gk score | Bin id'd N. F. genes |
+|----------|----------|-----------------------|-------|----------------------|
+|hu-genome30 | Methanoculleus marisnigri 62_101 | *glnB*\** | 134 | *nifH*, *nifK*|
+|hu-genome02 | Methanoculleus marisnigri 63_41 | *glnB*  | 134 | *nifH*, *nifK*|
+|hu-genome02 | Methanoculleus marisnigri 63_41 | *nifH* | 340 | *nifH*, *nifK*|
+|hu-genome24 | Methanocalculus sp. 52_23 | *glnB*  | 129 | *nifH*, *nifK*|
+|hu-genome29 | Desulfotomaculum sp. 46_80 | *nifE* | 114 | *nifH*, *nifK*, *nifE*, *nifB*|
+|hu-genome41 | Methanosaeta harundinacea 57_489 | *nifH* | 154 |  *nifH*, *nifE*|
+*N. F. = Nitrogen Fixation
+** overlap in crumbs, same observation as *glnB* in hu-genome02 crumbs.
+
+#### Crumbs might be enriched for metabolic genes
+
+We performed a KEGG enrichment analysis on the genes found in the crumb assemblies. Only metabolic genes were significantly enriched for, with the exception of Ribosomal genes (**figure 7**). This contrasts to "informational" genes which are involved in replication, translation, and transcription of nucleotides. This may indicate that we recover more accessory genes, i.e. genes in the pangenome, instead of core genes in the crumb assemblies. Still working on testing this. If this is true, it is interesting because it demonstrates a source of systemic bias in metagenomic assembly/binning. 
+
+```{r fig7, fig.width = 4, fig.height=3}
+img <- readPNG("docs/figures/crumb-dotplot-score100.png")
+grid.raster(img)
+```
+
+**Figure 7:** KEGG enrichment analysis of genes found in the crumb assemblies confidently annotated by KEGG GhostKOALA (>= 100). Carbon metabolism and methane metabolism are important for biogeochemical transformations in oil reservoirs.
 
 
 
-In two instances, we identified additional marker gene sequences for genes that were already present in the query. We investigated these sequences further to determine if the crumb assembly marker gene was very similar to the query marker gene. First, the *gyrA* sequence identified in hu-genome35 crumbs had high amino acid identity to that identified in the hu-genome35 bin (134/138; 97%), however there was no match at the nucleotide level (see blast matches in the supplement). The closest match at the nucleotide level was to *Draconibacterium orientale* strain FH5T. Given the high degree of amino acid similarity between the binned sequence and the sequence in the crumb, this may reflect strain variation within the population. 
-
-Second, the *gyrA* sequence in the crumb assemblies of hu-genome02 and hu-genome30 was identical, and a *gyrA* sequence was previously identified in the hu-genome02 bin. The closest amino acid match was to *Methanomicrobiales archaeon* (identities 102/111, 92%; e-value 4e-59), and there was no match to any Hu bins. The *M. archaeon* sequence was binned from a metagenome, and the organisms falls in an unclassified taxonomic class within order *Methanomicrobiales*, the order to which *Methanoculleus marisnigri* belongs. The closest nucleotide match was to *M. marisnigri* JR1 (identities 307/331, 93%, e-value 2e-134), and there was no match to any of the Hu bins. *M. marisnigri* JR1 was sequenced from an isolate. (BLAST alignments located in the supplement)
-
-The crumb assembly from hu-genome36 had an especially strong match to *gyrA* (score 628), and so we investigated this sequence further. At the amino acid level, the closest match was to the hu-genome36 bin (identity 96%) (BLAST alignments located in supplement). However, the closest match to the nucleotide sequence was *Pelotomaculum thermopropionicum*, and the next best match was *Desulfotomaculum kuznetsovii*. *Pelotomaculum* and *Desulfotomaculum* are from the same family, *Peptococcaceae*. Again, this may indicate the presence of strain variation within the sample.
-
-We also recovered marker genes from the crumb assembly of hu-genome38, a near-complete genome from a candidate phlya binned by Hu et al. The top amino acid hit was to the hu-genome38 bin *Parcubacteria bacterium* (identity 92%). Most other protein matches were to candidate phlya. The best nucleotide match was to *Sneathia amnii* strain SN35 with 70% identity, however *S. amnii* appears to be binned from a metagenome.
 
 ```{r deprecated, eval = FALSE}
 # BLAST with annotate --------
