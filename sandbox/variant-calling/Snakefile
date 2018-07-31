@@ -1,0 +1,126 @@
+'''
+Author: Taylor Reiter
+Affiliation: UC Davis Lab for Data Intensive Biology
+Aim: A Snakemake workflow to do variant calling 
+Date: June 30 2018
+
+Install: 
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda config --add channels defaults
+conda config --add channels r
+conda create -n hu python==3.6 snakemake=4.3.0
+
+Run: snakemake --use-conda
+Build graphic: snakemake --dag | dot -Tpdf > dag.pdf
+'''
+
+rule all:
+    input: 'outputs/variants/sb1_final_variants.vcf'
+
+rule download_bins:
+    output: 'inputs/hu-bins/hu-genomes.tar.gz'
+    shell:'''    
+    curl -L -o {output} https://osf.io/ehgbv/download 
+    '''
+
+rule unpack_bins:
+    output: 'outputs/bins/cat_bins.fa'
+    input: 'inputs/hu-bins/hu-genomes.tar.gz'
+    params: output_folder = 'inputs/hu-bins'
+    shell:'''
+    tar xf {input} --directory {params.output_folder}
+    cat {params.output_folder}/hu-genome*.fa > {output}
+    '''
+
+rule download_reads:
+    output:
+        R1='inputs/reads/SRR1976948_1.fastq.gz',
+        R2='inputs/reads/SRR1976948_2.fastq.gz'
+    shell:'''
+    curl -L -o {output.R1} ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR197/008/SRR1976948/SRR1976948_1.fastq.gz
+    curl -L -o {output.R2} ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR197/008/SRR1976948/SRR1976948_2.fastq.gz
+    '''
+
+rule trim_reads:
+    input:
+        R1='inputs/reads/SRR1976948_1.fastq.gz',
+        R2='inputs/reads/SRR1976948_2.fastq.gz'
+    output: 
+        R1='outputs/quality/SRR1976948_1.qc.fq.gz',
+        R1u='outputs/quality/SRR1976948_1un.qc.fq.gz',
+        R2='outputs/quality/SRR1976948_2.qc.fq.gz',
+        R2u='outputs/quality/SRR1976948_2un.qc.fq.gz'
+    conda: 'env.yml'   
+    shell:'''
+    trimmomatic PE {input.R1} {input.R2} \
+        {output.R1} {output.R1u} {output.R2} {output.R2u} \
+        ILLUMINACLIP:TruSeq3-PE.fa:2:40:15 \
+        LEADING:2 TRAILING:2 \
+        SLIDINGWINDOW:4:2 \
+        MINLEN:25
+    '''
+
+rule bwa_index:
+    output: 'outputs/bins/cat_bins.fa.bwt'
+    input: 'outputs/bins/cat_bins.fa'
+    conda: 'env.yml'
+    shell:'''
+    bwa index {input}
+    '''
+
+rule bwa_align:
+    output: 'outputs/alignments/sb1.sam'
+    input:
+        index = 'outputs/bins/cat_bins.fa.bwt',
+        bins = 'outputs/bins/cat_bins.fa',
+        R1 = 'outputs/quality/SRR1976948_1.qc.fq.gz',
+        R2 = 'outputs/quality/SRR1976948_2.qc.fq.gz'
+    conda: 'env.yml'
+    shell:'''
+    bwa mem -t 4 {input.bins} {input.R1} {input.R2} > {output}
+    '''
+
+rule sam_to_bam:
+    output: 'outputs/alignments/sb1.bam'
+    input: 'outputs/alignments/sb1.sam'
+    conda: 'env.yml'
+    shell:'''
+    samtools view -S -b {input} > {output}
+    '''
+
+rule sort_bam:
+    output: 'outputs/alignments/sb1.sorted.bam'
+    input: 'outputs/alignments/sb1.bam'
+    conda: 'env.yml'
+    shell:'''
+    samtools sort -o {output} {input}
+    '''
+
+rule calc_read_coverage:
+    output: 'outputs/variants/sb1_raw.bcf'
+    input:
+        bins= 'outputs/bins/cat_bins.fa',
+        bam = 'outputs/alignments/sb1.sorted.bam'
+    conda: 'env.yml'
+    shell:'''
+    samtools mpileup -g -o {output} -f {input.bins} {input.bam}
+    '''
+
+rule detect_snps:
+    output: 'outputs/variants/sb1_variants.bcf'
+    input: 'outputs/variants/sb1_raw.bcf'
+    conda: 'env.yml'
+    shell:'''
+    bcftools call --ploidy 1 -m -v -o {output} {input}
+    '''
+
+rule filter_snps:
+    output: 'outputs/variants/sb1_final_variants.vcf'
+    input: 'outputs/variants/sb1_variants.bcf'
+    conda: 'env.yml'
+    shell:'''
+    bcftools view {input} | vcfutils.pl varFilter - > {output}
+    '''
