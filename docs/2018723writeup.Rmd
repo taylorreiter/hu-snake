@@ -2,7 +2,9 @@
 title: "Hu Query Nbhds"
 author: "Taylor Reiter"
 date: "7/23/2018"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -21,6 +23,7 @@ library(annotate)
 library(Rsamtools)
 library(rentrez)
 library(knitr)
+library(kableExtra)
 ```
 
 ```{r notes}
@@ -214,10 +217,16 @@ Taxonomic classification can be performed using marker genes. Marker genes are c
 
 Hu et al. used amino acid sequences of the marker genes *gyrA*, *gyrB*, and *recA* (bacteria only) to perform taxonomic assignment of bins. 
 
-Some crumb assemblies contain marker genes (Table 1). We identified marker genes using the KEGG GhostKOALA algorithm on predicted amino acid sequences in the crumb assemblies. We explored taxonomy of the amino acid and nucleotide sequences of the marker genes using the blastp and blastn algorithms against the NCBI and nr/nt databases (7/27/18). This revealed the following:
+Some crumb assemblies contain marker genes (Table 1). We identified marker genes using the KEGG GhostKOALA algorithm on predicted amino acid sequences in the crumb assemblies. We explored taxonomy of the amino acid and nucleotide sequences of the marker genes using the blastp and blastn algorithms against the NCBI and nr/nt databases (7/27/18). This revealed the following:  
 1. Crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries.  
 2. Marker gene sequences in the crumb assemblies are similar but not identical to marker gene sequences and the queries.  
 3. In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness.  
+
+The crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries. At the amino acid level, the genus-level classification was always in agreeance with the Hu et al classification. However, often times the best match was to a marker gene sequence binned by Hu et al (see next paragraph). At the nucleotide level, the taxonomic classification of the crumb assemblies matched the Hu et al taxonomic assignments when the percent identity was above 85%. Matches below this percent identity threshold were candidate phyla (*Marinimicrobia bacterium* 46_43 and *Parcubacteria bacterium* 33_209). Candidate phlya are organisms for which no cultured isolates exist, but for which sequencing evidence supports their inclusion in different phlya than known organisms. The low percent identity (~60%) of marker genes in the query neighborhoods to other known organisms supports their classification as candidate phyla. 
+
+The nr/nt database includes our query sequences because the Hu et al bins were deposited in GenBank. Our BLAST search therefore also checked whether the crumb assembly marker gene sequences were similar at the amino acid or nucleotide level to sequences in the Hu bins. Eight of 14 crumb assembly marker gene sequences matched most closely to a query amino acid sequence. However, percent identity ranged from 89.565% - 97.101%, indicating that the sequences are closely related to but different from those found in the queries. These sequences likely arise from strains in the metagenome. At the nucleotide level, no crumb assembly marker gene sequences matched most closely to query nucleotide sequencing, further demonstrating that the sequences recovered in the crumb assemblies are taxonomically similar to but different from the query sequences. These results support the liklihood that there are more strains present in the crumb assemblies than are represented in the queries. 
+
+In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness. Queries *Methanoculleus marisnigri* isolate 63_41 (hu-genome02), *Methanoculleus marisnigri* isolate 62_101 (hu-genome30), and *Marinimicrobia bacterium 46_47* (hu-genome35) each contained a *gyrA* sequence. However the six other *gyrA* sequences and seven *gyrB* sequences observed in the crumb assemblies increased completeness of the query by associating these sequences with other sequences in the query. These new associations could be especially useful for taxonomic placement of *Parcubacteria bacterium* 33_209 (hu-genome38), a near complete genome belonging to a candidate phyla.
 
 **Table 1**: Taxonomic marker genes identified in crumb assemblies from the Hu SB1 sample. *Note that because some queries were closely related to each other, some identical crumb assembly sequences are associated with two queries*
 
@@ -438,15 +447,12 @@ crumb_marker$gene <- gsub("(; DNA gyrase subunit )([AB])( \\[EC:5.99.1.3\\])", "
 info_blast <- left_join(info_blast, crumb_marker, by = c("query" = "locus_tag"))
 info_blast_small <- info_blast[ , c(1, 4:10, 13:17, 20, 55, 50)]
 info_blast_small <- info_blast_small[ , c(14, 6, 15:16, 7, 1:5,13, 8:12)]
-colnames(info_blast_small) <- c("hu_taxonomy", "crumb_assembly", "marker_gene", "gk_score", "AA_species", "AA_accession", "AA_pident", "AA_length", "AA_bitscore", "AA_evalue", "N_species", "N_accession", "N_pident", "N_length", "N_bitscore", "N_evalue")
-kable(info_blast_small)
+colnames(info_blast_small) <- c("hu_taxonomy", "Crumb Contig", "Marker Gene", "GK Score", "AA Species", "AA Accession", "AA PIdent", "AA Length", "AA Bitscore", "AA evalue", "N Species", "N Accession", "N PIdent", "N Length", "N Bitscore", "N evalue")
+kable(info_blast_small, format = "latex", booktabs = TRUE) %>%
+  kableExtra::landscape()
 ```
 
-The crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries. At the amino acid level, the genus-level classification was always in agreeance with the Hu et al classification. However, often times the best match was to a marker gene sequence binned by Hu et al (see next paragraph). At the nucleotide level, the taxonomic classification of the crumb assemblies matched the Hu et al taxonomic assignments when the percent identity was above 85%. Matches below this percent identity threshold were candidate phyla (*Marinimicrobia bacterium* 46_43 and *Parcubacteria bacterium* 33_209). Candidate phlya are organisms for which no cultured isolates exist, but for which sequencing evidence supports their inclusion in different phlya than known organisms. The low percent identity (~60%) of marker genes in the query neighborhoods to other known organisms supports their classification as candidate phyla. 
 
-The nr/nt database includes our query sequences because the Hu et al bins were deposited in GenBank. Our BLAST search therefore also checked whether the crumb assembly marker gene sequences were similar at the amino acid or nucleotide level to sequences in the Hu bins. Eight of 14 crumb assembly marker gene sequences matched most closely to a query amino acid sequence. However, percent identity ranged from 89.565% - 97.101%, indicating that the sequences are closely related to but different from those found in the queries. These sequences likely arise from strains in the metagenome. At the nucleotide level, no crumb assembly marker gene sequences matched most closely to query nucleotide sequencing, further demonstrating that the sequences recovered in the crumb assemblies are taxonomically similar to but different from the query sequences. These results support the liklihood that there are more strains present in the crumb assemblies than are represented in the queries. 
-
-In queries that lacked marker genes, marker genes in the crumb assemblies increase genome completeness. Queries *Methanoculleus marisnigri* isolate 63_41 (hu-genome02), *Methanoculleus marisnigri* isolate 62_101 (hu-genome30), and *Marinimicrobia bacterium 46_47* (hu-genome35) each contained a *gyrA* sequence. However the six other *gyrA* sequences and seven *gyrB* sequences observed in the crumb assemblies increased completeness of the query by associating these sequences with other sequences in the query. These new associations could be especially useful for taxonomic placement of *Parcubacteria bacterium* 33_209 (hu-genome38), a near complete genome belonging to a candidate phyla.
 
 #### Taxonomic signal from non-marker genes
 
@@ -538,7 +544,7 @@ Our approach also built upon observations of nitrogenase genes identified by Hu 
 |hu-genome24 | Methanocalculus sp. 52_23 | *glnB*  | 129 | *nifH*, *nifK*|
 |hu-genome29 | Desulfotomaculum sp. 46_80 | *nifE* | 114 | *nifH*, *nifK*, *nifE*, *nifB*|
 |hu-genome41 | Methanosaeta harundinacea 57_489 | *nifH* | 154 |  *nifH*, *nifE*|
-*N. F. = Nitrogen Fixation
+*N. F. = Nitrogen Fixation  
 ** overlap in crumbs, same observation as *glnB* in hu-genome02 crumbs.
 
 #### Crumbs might be enriched for metabolic genes
