@@ -1,0 +1,15 @@
+hu_taxonomy,Crumb Contig,Marker Gene,GK Score,AA Species,AA Accession,AA PIdent,AA Length,AA Bitscore,AA evalue,N Species,N Accession,N PIdent,N Length,N Bitscore,N evalue
+Methanoculleus marisnigri isolate 63_41 ,hu-genome02ass_00056,gyrB,210,Methanoculleus horonobensis,WP_067073819,89.928,139,266,2.33e-83,Methanoculleus marisnigri JR1,CP000562,85,420,473,1.72e-129
+Methanoculleus marisnigri isolate 63_41 ,hu-genome02ass_00512,gyrB,214,Methanoculleus sp. MH98A,WP_048113132,96.403,139,284,3.14e-90,Methanoculleus marisnigri JR1,CP000562,93.81,420,641,5.61e-180
+Methanoculleus marisnigri isolate 63_41 ,hu-genome02ass_01634,gyrA,127,Methanoculleus horonobensis,WP_067073823,91.892,111,202,1.45e-58,Methanoculleus marisnigri JR1,CP000562,92.749,331,489,1.75e-134
+Marinimicrobia bacterium 46_43 ,hu-genome10ass_00334,gyrB,425,Marinimicrobia bacterium 46_47,KUK54883,95.82,311,593,0,Paenibacillus thiaminolyticus,AB842489,71.475,617,318,1.96e-82
+Marinimicrobia bacterium 46_43 ,hu-genome10ass_00684,gyrA,146,Marinimicrobia bacterium 46_47,KUK54884,97.101,138,263,8.49e-81,Draconibacterium orientale,CP007451,69.88,166,75.2,1.68e-09
+Methanocalculus sp. 52_23 ,hu-genome24ass_01209,gyrA,238,Methanocalculus sp. 52_23,KUK70572,94.118,238,455,2.83e-153,Methanoculleus bourgensis,LT549891,71.122,606,304,3.26e-78
+Methanoculleus marisnigri isolate 62_101 ,hu-genome30ass_00354,gyrA,127,Methanoculleus horonobensis,WP_067073823,91.892,111,202,1.45e-58,Methanoculleus marisnigri JR1,CP000562,92.749,331,489,1.75e-134
+Methanoculleus marisnigri isolate 62_101 ,hu-genome30ass_00407,gyrB,214,Methanoculleus sp. MH98A,WP_048113132,96.403,139,284,3.14e-90,Methanoculleus marisnigri JR1,CP000562,93.81,420,641,5.61e-180
+Methanoculleus marisnigri isolate 62_101 ,hu-genome30ass_01119,gyrB,210,Methanoculleus horonobensis,WP_067073819,89.928,139,266,2.33e-83,Methanoculleus marisnigri JR1,CP000562,85,420,473,1.72e-129
+Marinimicrobia bacterium 46_47 ,hu-genome35ass_00010,gyrB,425,Marinimicrobia bacterium 46_47,KUK54883,95.82,311,593,0,Paenibacillus thiaminolyticus,AB842489,71.475,617,318,1.96e-82
+Marinimicrobia bacterium 46_47 ,hu-genome35ass_00322,gyrA,146,Marinimicrobia bacterium 46_47,KUK54884,97.101,138,263,8.49e-81,Draconibacterium orientale,CP007451,69.88,166,75.2,1.68e-09
+Desulfotomaculum sp. 46_296 ,hu-genome36ass_00417,gyrA,628,Desulfotomaculum sp. 46_296,KUK53584,94.518,456,872,0,Pelotomaculum thermopropionicum SI,AP009389,68.589,1318,471,2.09e-128
+Parcubacteria bacterium 33_209 ,hu-genome38ass_00021,gyrB,335,Parcubacteria bacterium 33_209,KUK49827,91.892,259,481,1.94e-165,Sneathia amnii,CP011280,70.38,790,322,1.33e-83
+Parcubacteria bacterium 33_209 ,hu-genome38ass_00178,gyrA,103,Parcubacteria bacterium 33_209,KUK49946,89.565,115,201,3.63e-58,Streptococcus iniae,JX101627,65.812,234,62.6,8.3e-06
