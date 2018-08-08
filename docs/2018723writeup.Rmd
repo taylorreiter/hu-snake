@@ -239,8 +239,8 @@ In queries that lacked marker genes, marker genes in the crumb assemblies increa
 # 6. Report in a table. 
 
 # read in crumb data
-crumb_full <- list.files("outputs/hu-crumbs_bin/assembly/GhostKOALA/", "full.txt$", full.names = T)
-crumb_kegg <- list.files("outputs/hu-crumbs_bin/assembly/GhostKOALA/", "full.txt$")
+crumb_full <- list.files("outputs/hu-crumbs-bin/assembly/GhostKOALA/", "full.txt$", full.names = T)
+crumb_kegg <- list.files("outputs/hu-crumbs-bin/assembly/GhostKOALA/", "full.txt$")
 
 crumb_kegg <- gsub(".ko-ann-full.txt", "", crumb_kegg)
 crumb_df <- data.frame(locus_tag = NA, geneID = NA, name = NA, score = NA, second = NA, second_score = NA, bin = NA)
@@ -290,11 +290,18 @@ recA <- 'K03553'
 crumb_marker <- kegg_df %>% 
                   filter(origin == "crumb") %>%
                   filter(geneID %in% c(gyrA, gyrB, recA))
+
+bin_marker <- kegg_df %>% 
+                  filter(origin == "bin") %>%
+                  filter(geneID %in% c(gyrA, gyrB, recA))
+
+# crumb assemblies that have marker genes for which there was no ortholog in the query
+novel_marks <- anti_join(unique(crumb_marker[ , c('bin', 'name')]), unique(bin_marker[ , c('bin', 'name')]))
 ```
 
 ```{r blast_crumb_marker_genes_nucs, include = FALSE}
-indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.ffn")   # create an index of file 'foo.fasta'
-ffn = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.ffn")
+indexFa("outputs/hu-crumbs-bin/assembly/prokka/all.ffn")   # create an index of file 'foo.fasta'
+ffn = FaFile("outputs/hu-crumbs-bin/assembly/prokka/all.ffn")
 gr = as(seqinfo(ffn), "GRanges")
 
 get_nucs <- function(seq_name, GRanges, FaFile){
@@ -373,8 +380,8 @@ info_blast <- left_join(blast_nuc, info, by = "name")
 ```
 
 ```{r blast_crumb_marker_genes_aas, include = FALSE}
-indexFa("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa") 
-faa = FaFile("outputs/hu-crumbs_bin/assembly/prokka/all-assembly.faa")
+indexFa("outputs/hu-crumbs-bin/assembly/prokka/all.faa") 
+faa = FaFile("outputs/hu-crumbs-bin/assembly/prokka/all.faa")
 graa = as(seqinfo(faa), "GRanges") 
 
 get_aas <- function(seq_name, GRanges, FaFile){
@@ -452,11 +459,11 @@ kable(info_blast_small, format = "latex", booktabs = TRUE) %>%
   kableExtra::landscape()
 ```
 
-<<<<<<< HEAD
-=======
-The crumb assembly marker gene sequence taxonomic classification generally agrees with the Hu et al classification of queries. At the amino acid level, the genus-level classification was always in agreement with the Hu et al classification. However, often times the best match was to a marker gene sequence binned by Hu et al (see next paragraph). At the nucleotide level, the taxonomic classification of the crumb assemblies matched the Hu et al taxonomic assignments when the percent identity was above 85%. Matches below this percent identity threshold were candidate phyla (*Marinimicrobia bacterium* 46_43 and *Parcubacteria bacterium* 33_209). Candidate phyla are organisms for which no cultured isolates exist, but for which sequencing evidence supports their inclusion in different phlya than known organisms. The low percent identity (~60%) of marker genes in the query neighborhoods to other known organisms supports their classification as candidate phyla. 
->>>>>>> 3e44032f0f1bfdbcdfa313dc32caea1f4a41b36b
+In two instances, marker genes were found in the crumb assemblies for which there was no ortholog in the queries. 
 
+```{r print_novel_markers}
+kabel(novel_marks)
+```
 
 #### Taxonomic signal from non-marker genes
 
