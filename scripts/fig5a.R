@@ -1,0 +1,98 @@
+# the directory in which this R script lives contains sym-linked files of the crumb assembly GhostKOALA output and the bin GhostKOALA output. 
+# the purpose of this script is to visualize the relative impact of the annotations from the crumbs against that of the bins.
+
+library(clusterProfiler)
+library(dplyr)
+library(ggplot2)
+
+# READ & FORMAT DATA ------------------------------------------------------------
+import_kegg <- function(file, gsub_regex, origin){
+  # file name: full path to user_ko_definition.txt
+  # gsub_regex: regex to use on locus_tag column to create bin identifier. For crumbs, "(ass_[0-9]*)". For bins, "(_[0-9]*)"
+  # origin: either crumb or bin
+  df <- read.csv(file, sep = "\t", stringsAsFactors = FALSE, quote = "", na.strings = "", 
+                 col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score")) 
+  df$bin <- gsub(gsub_regex, "", df$locus_tag) # add column named bin for bin of origin
+  df$origin <- rep(origin, nrow(df)) # add row specifying identity
+  df <- df[df$score > 100, ] # retain only kegg ids for which the score is > 100
+  return(df)
+}
+
+info <- read.csv(snakemake@input[["info"]]) # read in metadata
+crumb_df <- import_kegg(file = snakemake@input[["crumb_kegg"]], 
+                        gsub_regex = "(ass_[0-9]*)", origin = "crumb")
+bin_df <- import_kegg(snakemake@input[["bin_kegg"]], 
+                      gsub_regex = "(_[0-9]*)", origin = "bin")
+
+kegg_df <- rbind(crumb_df, bin_df) # combine two dfs
+
+kegg_df <- kegg_df %>%
+  filter(bin %in% crumb_df$bin) # filter out the extra hu bins
+
+keggo <- kegg_df[ , 2] # grab kegg orthologs
+keggo <- keggo[!is.na(keggo)] # remove NAs
+
+kegg_enrich <- enrichKEGG(gene = keggo, organism = "ko", pvalueCutoff = 1) # set p value to 1 so everything will be returned
+
+df <- kegg_enrich@result # grab data.frame of results
+
+# PLOT 5a -------------------------------------------------------
+# Plot total # of occurrences of any member in a sample and for each category (KOs that appear more than once are counted more than once)
+
+# Use kegg df to map original kegg occurrences to categories
+mapping <- data.frame(Description = NA, geneID = NA)
+for(i in 1:nrow(df)){
+  tmp <- strsplit(x = df$geneID[i], split = "/")
+  tmp2 <- rep(df$Description[i], times = length(tmp))
+  tmp_df <- data.frame(Description = tmp2, geneID = tmp)
+  colnames(tmp_df) <- c("Description", "geneID")
+  mapping <- rbind(mapping, tmp_df) 
+}
+
+# Transfer mappings to original kegg data
+transfer_mappings <- function(kegg_df, mappings, df_label){
+  # kegg_df: df of tsv downloaded from Ghost Koala indicating locus_tag kegg id annotations
+  # mappings: mappings of kegg ID to BRITE hierarchy (see above)
+  # df_label: a string that will get added to the output df indicating which sample is in the df
+  # i.e. "kegg19"
+  library(dplyr)
+  kegg_df <- right_join(kegg_df, mappings)
+  kegg_df <- kegg_df[!is.na(kegg_df$locus_tag), ]
+  kegg_df <- kegg_df[!is.na(kegg_df$geneID), ]
+  kegg_df$sample <- rep(df_label, nrow(kegg_df))
+  return(kegg_df)
+}
+map <- transfer_mappings(kegg_df = kegg_df, mappings = mapping, df_label = "all")
+
+sum_df <- map %>%
+  group_by(Description) %>%
+  tally() # tally the description; use to set order of the plot
+
+sum_df <- sum_df[order(sum_df$n, decreasing = T), ] # order by total occurence
+sum_df <- sum_df[1:20, ] # retain only top 20
+#sum_df$Description <- droplevels(sum_df$Description)
+sum_df$Description <- factor(sum_df$Description, 
+                             levels = sum_df$Description[order(sum_df$n)]) # set order from overall sums
+
+map <- map %>% 
+  filter(Description %in% sum_df$Description) # prune map to only top 20
+
+# Use the order set above to set order of factor levels in mapped data
+map$Description <- factor(map$Description, 
+                          levels = sum_df$Description[order(sum_df$n)])
+
+plot5a <- ggplot(map, aes(x = Description, fill = origin)) + geom_bar() + theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("ortholog pathways") + 
+  ggtitle("Total # Ocurrences of any Ortholog") +
+  coord_flip() +
+  scale_fill_hue(labels = c("binned genomes", "unbinned content"))
+
+# write plot
+pdf(snakemake@output[["pdf"]], width = 6, height = 3)
+plot5a
+dev.off()
+
+png(snakemake@output[["png"]], width = 6, height = 3, units = 'in', res = 300)
+plot5a
+dev.off()
