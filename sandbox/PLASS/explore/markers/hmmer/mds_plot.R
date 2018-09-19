@@ -1,5 +1,24 @@
 setwd("~/github/hu-snake/sandbox/PLASS/explore/markers/hmmer/")
 
+## In Bash
+# # locate the gyra sequences in the plass all_sb1 output. Use a bitscore cutoff of 100.
+# hmmscan -T 100 -o plass-gyra-hmmscanT100.out --tblout plass-gyra-seq-hmmscanT100.out --domtblout plass-gyra-dom-hmmscanT100.out --pfamtblout plass-gyra-pfam-hmmscanT100.out PF00521_full_gyra.hmm all_sb1.nostop.c100.fas 
+# 
+# # grab names of sequences that matched (there are 2170)
+# grep -v "^#" plass-gyra-seq-hmmscanT100.out | cut -d " " -f15 > plass-gyra-seq-hmmscanT100-NAMES.out
+# 
+# # grab the fasta sequences
+# while read inline
+# do 
+# samtools faidx plass-gyra-hmmscan.faa $inline >> plass-gyra-hmmscanT100.faa
+# done < plass-gyra-seq-hmmscanT100-NAMES.out
+# 
+# # make hmm
+# hmmbuild PF00521_full_gyra.hmm PF00521_full_gyra.txt
+# 
+# # align all of the fasta sequences, using the hmm model
+# hmmalign -o PF00521_plass_gyra.sto PF00521_full_gyra.hmm plass-gyra-hmmscanT100.faa 
+
 library(tidyr)
 library(dplyr)
 library(plotly)
@@ -54,6 +73,10 @@ write.table(ov$query_name, file = "plass-gyra-hmmscanT100-gyra200-400-NAMES.txt"
 # do
 # samtools faidx plass-gyra-hmmscanT100.faa $inline >> plass-gyra-hmmscanT100-gyra200-400.faa
 # done < plass-gyra-hmmscanT100-gyra200-400-NAMES.txt 
+# 
+# # align these new sequences using hmm
+# hmmalign -o PF00521_plass_gyra200-400.sto PF00521_full_gyra.hmm plass-gyra-hmmscanT100-gyra200-400.faa 
+# esl-alipid PF00521_plass_gyra200-400.sto > PF00521_plass_gyra200-400.sto.pid
 
 
 # plot --------------------------------------------------------------------
