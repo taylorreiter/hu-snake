@@ -1,4 +1,5 @@
 # CRUMB ASSEMBLIES #################################################
+## TO DO: switch out dups file for all.ffn when all.ffn only contains SB1 seqs
 
 rule download_kegg_assembly_crumbs:
     output: 
@@ -110,12 +111,30 @@ rule blast_marker_genes:
         crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt',
         bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt',
         ffn = 'outputs/hu-crumbs-bin/assembly/prokka/all.ffn',
-        fna = 'outputs/hu-crumbs-bin/assembly/prokka/all.faa',
+        faa = 'outputs/hu-crumbs-bin/assembly/prokka/all.faa',
         blastn = '.snakemake/conda/b63dce9d/bin/blastn',
         blastp = '.snakemake/conda/b63dce9d/bin/blastp'
     conda: 'env-kegg.yml'
     script: 'scripts/blast_marker_gene.R'
 
+rule novel_marker_genes:
+    output: 
+        csv = "outputs/hu-crumbs-bin/assembly/marker-genes/novel_crumb_marks.csv" 
+    input:
+        crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt',
+        bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt'
+    conda: 'env-kegg.yml'
+    script: 'scripts/crumb_novel_marker_genes.R'
+
+rule nitro_genes:
+    output: csv = 'outputs/hu-crumbs-bin/assembly/other/crumb_nitro_genes.csv'
+    input:
+        info = 'inputs/hu_info.csv',
+        crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt',
+        bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt'
+    conda: 'env-kegg.yml'
+    script: 'scripts/crumb_nitrogenase.R'
+ 
 rule plot_fig5a:
     output: 
         pdf = 'outputs/figures/fig5a.pdf',
@@ -123,7 +142,8 @@ rule plot_fig5a:
     input:
         info = 'inputs/hu_info.csv',
         crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt',
-        bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt'
+        bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt',
+        #dups = 'outputs/hu-crumbs-bin/assembly/prokka/sb1.ffn'
     conda: 'env-kegg.yml'
     script: 'scripts/fig5a.R'
 
@@ -132,6 +152,8 @@ rule plot_fig5b:
         pdf = 'outputs/figures/fig5b.pdf',
         png = 'outputs/figures/fig5b.png' 
     input:
-        crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt'
+        crumb_kegg = 'outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt',
+        #dups = 'outputs/hu-crumbs-bin/assembly/prokka/sb1.ffn'
     conda: 'env-kegg.yml'
     script: 'scripts/fig5b.R'
+

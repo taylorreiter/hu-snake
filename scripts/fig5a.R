@@ -2,8 +2,29 @@
 # the purpose of this script is to visualize the relative impact of the annotations from the crumbs against that of the bins.
 
 library(clusterProfiler)
+library(Biostrings)
 library(dplyr)
 library(ggplot2)
+
+# GET CONTIG NAMES OF DUPLICATED NUCLEOTIDE SEQUENCES ---------------------------
+
+#sb1 <- readDNAStringSet(snakemake@input[["dups"]])
+sb1 <- readDNAStringSet("outputs/hu-crumbs-bin/assembly/prokka/sb1.ffn")
+ndj <- sb1[duplicated(sb1)]
+
+dups2 <- list()
+for(i in 1:length(ndj)){
+  dups2[[i]] <- names(sb1[which(vcountPattern(ndj[[i]], sb1) == 1)])
+}
+
+keep <- vector()
+for(i in 1:length(dups2)){
+  keep[i] <- dups2[[i]][1]
+}
+
+remove <- !(unlist(dups2) %in% keep) 
+remove <- unlist(dups2)[remove]
+remove <- gsub(" .*", "", remove)
 
 # READ & FORMAT DATA ------------------------------------------------------------
 import_kegg <- function(file, gsub_regex, origin){
@@ -19,15 +40,24 @@ import_kegg <- function(file, gsub_regex, origin){
 }
 
 info <- read.csv(snakemake@input[["info"]]) # read in metadata
+info <- info %>% 
+          filter(sample_origin == "SB1") # only keep SB1 samples
+
 crumb_df <- import_kegg(file = snakemake@input[["crumb_kegg"]], 
                         gsub_regex = "(ass_[0-9]*)", origin = "crumb")
+# crumb_df <- import_kegg(file = "outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt", gsub_regex = "(ass_[0-9]*)", origin = "crumb")
+
+crumb_df <- crumb_df %>% 
+              filter(bin %in% info$name) # filter to SB1 samples
+
 bin_df <- import_kegg(snakemake@input[["bin_kegg"]], 
                       gsub_regex = "(_[0-9]*)", origin = "bin")
-
+# bin_df <- import_kegg(file = "outputs/hu-bins/GhostKOALA/user_ko_definition.txt", gsub_regex = "(_[0-9]*)", origin = "bin")
 kegg_df <- rbind(crumb_df, bin_df) # combine two dfs
 
 kegg_df <- kegg_df %>%
-  filter(bin %in% crumb_df$bin) # filter out the extra hu bins
+            filter(bin %in% crumb_df$bin) %>% # filter out the extra hu bins
+            filter(!(locus_tag %in% remove)) # remove idential nucleotide (non disjoint)
 
 keggo <- kegg_df[ , 2] # grab kegg orthologs
 keggo <- keggo[!is.na(keggo)] # remove NAs
@@ -84,15 +114,18 @@ map$Description <- factor(map$Description,
 plot5a <- ggplot(map, aes(x = Description, fill = origin)) + geom_bar() + theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   xlab("ortholog pathways") + 
-  ggtitle("Total # Ocurrences of any Ortholog") +
+  ggtitle("Total # Occurrences of any Ortholog") +
   coord_flip() +
   scale_fill_hue(labels = c("binned genomes", "unbinned content"))
 
 # write plot
 pdf(snakemake@output[["pdf"]], width = 6, height = 3)
+#pdf('outputs/figures/fig5a.pdf', width = 6, height = 3)
 plot5a
 dev.off()
 
 png(snakemake@output[["png"]], width = 6, height = 3, units = 'in', res = 300)
+#png('outputs/figures/fig5a.png', width = 6, height = 3, units = 'in', res = 300)
 plot5a
 dev.off()
+

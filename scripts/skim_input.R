@@ -3,8 +3,8 @@ library(tidyr)
 library(skimr)
 
 # list files
-all_fai <- list.files("inputs/hu-crumbs_bins", ".fai$")
-all_fai_full <- list.files("inputs/hu-crumbs_bin", ".fai$", full.names = T)
+all_fai <- list.files("inputs/hu-crumbs-bins", ".fai$")
+all_fai_full <- list.files("inputs/hu-crumbs-bin", ".fai$", full.names = T)
 
 # read in all files
 fai_df <- data.frame(V2 = NA, name = NA)
@@ -42,4 +42,4 @@ skim_summary <- fai_df %>%
   skim_to_wide() %>%
   select(genome, n, p0, p50, p100, sum, hist)
 
-write.table(skim_summary, file = "outputs/hu-crumbs_bin/summary_of_inputs.tsv", sep = "\t", quote = F, row.names = F)
+write.table(skim_summary, file = "outputs/hu-crumbs-bin/summary_of_inputs.tsv", sep = "\t", quote = F, row.names = F)

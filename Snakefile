@@ -28,4 +28,6 @@ rule all:
         'outputs/hu-crumbs-bin/assembly/marker-genes/blast_nuc.csv',
         'outputs/hu-crumbs-bin/assembly/marker-genes/blast_nuc_full.csv',
         'outputs/hu-crumbs-bin/assembly/marker-genes/blast_aa.csv',
-        'outputs/hu-crumbs-bin/assembly/marker-genes/blast_aas_full.csv'
+        'outputs/hu-crumbs-bin/assembly/marker-genes/blast_aas_full.csv',
+        'outputs/hu-crumbs-bin/assembly/marker-genes/novel_crumb_marks.csv',
+        'outputs/hu-crumbs-bin/assembly/other/crumb_nitro_genes.csv'
