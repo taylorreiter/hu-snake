@@ -1,5 +1,3 @@
-import pysam
-
 # upstream code:
 # cp ../../../../outputs/hu-bins/prokka/sb1_tmp/all_sb1_bin_prokka.faa .
 # sed 's/>/&BIN-/' all_sb1_bin_prokka.faa > all_sb1_bin_prokka2.faa
@@ -8,74 +6,53 @@ import pysam
 
 ENV = "clustering-env.yml"
 
-PFAM_LINK = "https://pfam.xfam.org/family/PF00521/alignment/full" # link to the PFAM seqs to use; here gyrA
-PFAM_BASE = "PF00521_full_gyra" # file basename to save PFAM as
+PFAM_LINKS=[
+            ("PF00521_full_gyra.sto", "https://pfam.xfam.org/family/PF00521/alignment/full"), 
+            ("PF00204_full_gyrb.sto", "https://pfam.xfam.org/family/PF00204/alignment/full"),
+            ("PF00181_full_rplb.sto", "https://pfam.xfam.org/family/PF00181/alignment/full"),
+            ("PF00189_full_rpsc.sto", "https://pfam.xfam.org/family/PF00189/alignment/full"),
+            ("PF00154_full_reca.sto", "https://pfam.xfam.org/family/PF00154/alignment/full"),
+            ("PF01411_full_alas.sto", "https://pfam.xfam.org/family/PF01411/alignment/full"),
+            ("PF00562_full_rpb2d6.sto", "https://pfam.xfam.org/family/PF00562/alignment/full")]
 
-## original gyrA:
-#FAA = "loosetrim_plus_bin" # input basename faa amino acid sequence
-#OUT_BASE = "loosetrim-plus-bin-PF00521-hmmscanT100" # input basename for hmmer output
+PFAM_BASE=["PF00521_full_gyra", 
+            "PF00204_full_gyrb",
+            "PF00181_full_rplb",
+            "PF00189_full_rpsc",
+            "PF00154_full_reca",
+            "PF01411_full_alas",
+            "PF00562_full_rpb2d6"]
 
-## new gyrA (has full loose trim & hard trim, as well as concatenated seqs from bins)
 FAA = "all_hardtrim.plass.c100.all_bin"
-OUT_BASE = "plass-hardtrim-all-bin-PF00521-hmmscanT100"
 #FAA = "all_loosetrim.plass.c100.all_bin"
-#OUT_BASE = "plass-loosetrim-all-bin-PF00521-hmmscanT100"
 
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00204/alignment/full" #gyrB
-#PFAM_BASE = "PF00204_full_gyrb"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00204-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00204-hmmscanT100"
+OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
+            "plass-hardtrim-all-bin-PF00204-hmmscanT100",
+            "plass-hardtrim-all-bin-PF00181-hmmscanT100",
+            "plass-hardtrim-all-bin-PF00189-hmmscanT100",
+            "plass-hardtrim-all-bin-PF00154-hmmscanT100",
+            "plass-hardtrim-all-bin-PF01411-hmmscanT100",
+            "plass-hardtrim-all-bin-PF00562-hmmscanT100"]
 
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00181/alignment/full" # rplb
-#PFAM_BASE = "PF00181_full_rplb"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00181-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00181-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00189/alignment/full" # rpsc
-#PFAM_BASE = "PF00189_full_rpsc"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00189-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00189-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00154/alignment/full" # recA
-#PFAM_BASE = "PF00154_full_reca"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00154-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00154-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF01411/alignment/full" # alaS
-#PFAM_BASE = "PF01411_full_alas"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF01411-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF01411-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00562/alignment/full" # rpb2 d6
-#PFAM_BASE = "PF00562_full_rpb2d6"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00562-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00562-hmmscanT100"
+#OUT_BASE = ["plass-loosetrim-all-bin-PF00521-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF00204-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF00181-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF00189-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF00154-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF01411-hmmscanT100",
+#            "plass-loosetrim-all-bin-PF00562-hmmscanT100"]
 
 rule all:
     input: 
         expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
- 
+
 rule download_pfam:
-    output: "inputs/pfam/{pfam_base}.sto"
-    params: 
-        pfam_link = PFAM_LINK,
-        pfam_base = PFAM_BASE,
-        out_dir = "inputs/pfam"
-    shell:'''
-    wget -O {params.out_dir}/{params.pfam_base}.sto {params.pfam_link}
-    '''
+    output:
+        ["inputs/pfam/{f}".format(f=filename) for (filename, _) in PFAM_LINKS]
+    run:
+        for (filename, link) in PFAM_LINKS:
+            shell("wget {link} -0 outdir/{filename}".format(
+                link=link, filename=filename)) 
 
 rule hmmbuild:
     output: "outputs/hmmbuild/{pfam_base}.hmm"
