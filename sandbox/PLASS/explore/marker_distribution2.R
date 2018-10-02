@@ -21,7 +21,7 @@ import_kegg <- function(file, gsub_regex, origin){
 info <- read.csv("inputs/hu_info.csv")
 plass <- import_kegg(file = "outputs99/GhostKOALA/user_ko_definition.txt", gsub_regex = "(_SRR1976948.[0-9_]{2,12})", origin = "crumb")
 # FORMAT BLAST OUTPUT -----------------------------------------------------
-blast <- read.delim("explore/prots/plass-archaea-gyra-blastp.tab", sep = "\t", header = F, 
+blast <- read.delim("explore/markers/test/plass-archaea-gyra-blastp.tab", sep = "\t", header = F, 
                     col.names = c('qseqid', 'sseqid', 'pident', 'length', 'mismatch', 
                                   'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'))
 blast$bin <- gsub("(_SRR1976948.[0-9_]{2,12})", "", blast$qseqid)
@@ -60,8 +60,8 @@ tops <- blast %>% group_by(name.x) %>% top_n(1, pident) # find highest match
 tops <- tops[!duplicated(tops$name.x, fromLast=TRUE), ] # reduce to one
 
 # grab sequences from local fasta that blast database was made from
-indexFa("explore/prots/archaea-gyra.faa") 
-faa = FaFile("explore/prots/archaea-gyra.faa")
+indexFa("explore/markers/archaea-gyra.faa") 
+faa = FaFile("explore/markers/archaea-gyra.faa")
 graa = as(seqinfo(faa), "GRanges") 
 
 get_aas <- function(seq_name, GRanges, FaFile){
@@ -82,7 +82,7 @@ names(blastaas) <- paste0(as.character(tops$sseqid), "_", tops$bin.x)
 # blastp -db best-archaea-gyra.fasta -outfmt 6 -word_size 6 -gapopen 11 -gapextend 1 -window_size 40 -matrix BLOSUM62 -comp_based_stats 2 -max_target_seqs 1 -query plass-archaea-gyra.fas -out best-archaea-gyra-blastp.tab
 
 # PAIRWISE ALIGN ----------------------------------------------------------
-plassaas <- readAAStringSet("explore/prots/plass-archaea-gyra.fas")
+plassaas <- readAAStringSet("explore/markers/test/plass-archaea-gyra.fas")
 # blastaas <- readAAStringSet("explore/prots/best-archaea-gyra.fasta")
 
 # compare all records to get correct sets of pairwise alignments
@@ -114,7 +114,7 @@ for(i in 1:length(plassaas)){ # loop through all plass aas
             df[x, 'nmismatch'] <-nmismatch(a)
             df[x, 'pid'] <-pid(a)
             df[x, 'score'] <-score(a)
-            df[x, 'type'] <-type(a)
+            #df[x, 'type'] <-type(a)
           } else {
             next
           }
@@ -136,4 +136,11 @@ df <- df %>%
 library(beanplot)
 
 par(mar=c(5, 13, 1, 1) +.1) #bottom, left, top, right
-beanplot(df$pid ~ df$bin, ll = .04, side = "second", method = "stack", names = unique(as.character(df$abbreviation)), xlab = "Amino Acid Percent Identity by Pairwise Local Alignment", horizontal = T, show.names = T, las = 1)
+df <- df %>%
+        filter(bin == "hu-genome41")
+steel_blue = "#3e80b8ff" 
+beanplot(df$pid ~ df$bin, ll = .1, side = "second", method = "stack", col = c(steel_blue, "white"), names = unique(as.character(df$abbreviation2)), xlab = "Amino Acid Percent Identity by Pairwise Local Alignment", horizontal = T, show.names = F, what = c(1, 1, 0, 1), ylim = c(80, 100), border = "white", frame.plot = F)
+axis(line =2, add = T)
+
+# las = 1
+?beanplot

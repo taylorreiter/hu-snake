@@ -2,7 +2,7 @@ library(dplyr)
 library(rentrez)
 library(Rsamtools)
 
-
+setwd(dir = "~/github/hu-snake/sandbox/PLASS/")
 # INPUT  ------------------------------------------------------------------
 
 import_kegg <- function(file, gsub_regex, origin){
@@ -20,11 +20,10 @@ import_kegg <- function(file, gsub_regex, origin){
 #info <- read.csv(snakemake@input[['info']]) # hu sample info
 info <- read.csv("inputs/hu_info.csv")
 info <- info %>% 
-          filter(sample_origin == "SB1") %>% # only keep SB1 samples
-          filter(kingdom == "archaea")
+          filter(sample_origin == "SB1") 
 
 # plass <- import_kegg(file = snakemake@input[['crumb_kegg']], gsub_regex = "(_SRR1976948.[0-9_]{2,12})", origin = "crumb")
-plass <- import_kegg(file = "outputs99/GhostKOALA/user_ko_definition.txt", gsub_regex = "(_SRR1976948.[0-9_]{2,12})", origin = "crumb")
+plass <- import_kegg(file = "outputs/GhostKOALA/user_ko_definition.txt", gsub_regex = "(_SRR1976948.[0-9_]{2,12})", origin = "crumb")
 
 plass <- plass %>% 
               filter(bin %in% info$name) # filter to SB1 samples
@@ -43,34 +42,37 @@ plass_marker <- plass %>%
 plass_marker$gene <- gsub("(; DNA gyrase subunit )([AB])( \\[EC:5.99.1.3\\])", "", plass_marker$name) # set gene name
 # crumb_marker$gene <- gsub("; recombination protein RecA", "", crumb_marker$gene) # make a new column for gene symbol
 
-write.table(plass_marker$locus_tag, "explore/prots/plass_archaea_gyra.txt", quote = F, row.names = F, col.names = F)
-# WRITE OUT, DO SAMTOOLS FAIDX ON THE COMMAND LINE, THEN READ BACK IN HERE AS A SMALLER FASTA FILE. 
+write.table(plass_marker$locus_tag, "explore/prots/plass_gyra.txt", quote = F, row.names = F, col.names = F)
+# WRITE OUT, DO SAMTOOLS FAIDX ON THE COMMAND LINE TO REDUCE FASTA SIZE.
 
 ## grab plass amino acid gyra sequences
 ## in bash:
 # samtools faidx inputs/hu-genomes-plass100/sb1/all_sb1.nostop.c100.fas 
 # while read inline
 # do
-#   samtools faidx inputs/hu-genomes-plass100/sb1/all_sb1.nostop.c100.fas $inline >> explore/prots/plass-archaea-gyra.fas
-# done < explore/prots/plass_archaea_gyra.txt
-
-## note failures:
-## [fai_fetch] Warning - Reference hu-genome24_SRR1976948.14191619 not found in FASTA file, returning empty sequence
-## Failed to fetch sequence in hu-genome24_SRR1976948.14191619
-## [fai_fetch] Warning - Reference hu-genome30_SRR1976948.819204 not found in FASTA file, returning empty sequence
-## Failed to fetch sequence in hu-genome30_SRR1976948.819204
-## [fai_fetch] Warning - Reference hu-genome41_SRR1976948.8497598_2 not found in FASTA file, returning empty sequence
-## Failed to fetch sequence in hu-genome41_SRR1976948.8497598_2
+#   samtools faidx inputs/hu-genomes-plass100/sb1/all_sb1.nostop.c100.fas $inline >> explore/prots/plass-gyra.fas
+# done < explore/prots/plass_gyra.txt
 
 ## download ncbi protein archaea gyra sequences:
+## files were created by navigating to NCBI and typing in "gyra" and limiting to either archaea or bacteria. The accession list was then downloaded. See here for more detailed instructions: https://taylorreiter.github.io/2018-09-05-ncbi-prot-download/
+
 # while read inline 
 # do
 # i=$inline
 # curl -s  "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id=${i}&rettype=fasta&retmode=txt">>archaea-gyra.faa
 # done < archaea-gyra.seq
 
+# while read inline 
+# do 
+# i=$inline
+# curl -s  "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id=${i}&rettype=fasta&retmode=txt">>bacteria-gyra.faa
+# done < bacteria-gyra.seq 
+
+## Concatenate the sequences into a single prokaryotic gyrA seqs file
+# cat archaea-gyra.faa bacteria-gyra.faa > prokaryotic-gyra.faa
+
 ## Make a blast database out of the sequences:
-# makeblastdb -in archaea-gyra.faa -dbtype prot -out archaea-gyra-db/archaea-gyra
+# makeblastdb -in prokaryotic-gyra.faa -dbtype prot -out prokaryotic-gyra-db/prokaryotic-gyra
 
 ## blast seqs
-# blastp -db archaea-gyra-db/archaea-gyra -outfmt 6 -word_size 6 -gapopen 11 -gapextend 1 -window_size 40 -matrix BLOSUM62 -comp_based_stats 2 -max_target_seqs 1 -query plass-archaea-gyra.fas -out plass-archaea-gyra-blastp.tab
+# blastp -db prokaryotic-gyra-db/prokaryotic-gyra -outfmt 6 -word_size 6 -gapopen 11 -gapextend 1 -window_size 40 -matrix BLOSUM62 -comp_based_stats 2 -max_target_seqs 1 -query plass-gyra.fas -out plass-gyra-blastp.tab
