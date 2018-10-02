@@ -18,7 +18,7 @@ dom <- makeGRangesFromDataFrame(dom,
 
 # define reads to keep for pid calc ------------------------------------
 
-if(length(dom) > 211){
+if(max(dom$domain_len) > 211){
   # if the domain is greater than 211 residues:
   # make a sliding window of 200bp that progresses by 10 bp each step. 
   # Calc overlaps for each of these. 
@@ -47,7 +47,7 @@ if(length(dom) > 211){
               quote = F, row.names = F, col.names = F) # write sequence names to a file
 } else {
   # if the domain is not greater than 211 bp:
-  # subset to aa seqs that have at least 125 residues overlapping the domain
+  # subset to aa seqs that overlap at least half of the in the domain
   start = 1
   end = length(dom)
   want <- makeGRangesFromDataFrame(data.frame(domain_name = as.character(seqnames(dom))[1], 
@@ -60,8 +60,9 @@ if(length(dom) > 211){
                                    end.field="end",
                                    #strand.field="strand",
                                    starts.in.df.are.0based=FALSE)
-  ov <- subsetByOverlaps(dom, want, minoverlap = 125)
-  print("Domain not long enough to select area with most coverage.")
+  ov <- subsetByOverlaps(dom, want, minoverlap = (length(dom)/2))
+  print("Domain not long enough to select area with most coverage. 
+        Used whole domain, kept sequences that overlapped at least half of domain.")
   write.table(ov$query_name, file = snakemake@output[['keep']], 
               quote = F, row.names = F, col.names = F) # write sequence names to a file
 }

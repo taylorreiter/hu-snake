@@ -1,14 +1,71 @@
 import pysam
 
+# upstream code:
+# cp ../../../../outputs/hu-bins/prokka/sb1_tmp/all_sb1_bin_prokka.faa .
+# sed 's/>/&BIN-/' all_sb1_bin_prokka.faa > all_sb1_bin_prokka2.faa
+# cat all_hardtrim.plass.c100.faa all_sb1_bin_prokka2.faa > all_hardtrim.plass.c100.all_bin.faa
+# cat all_loosetrim.plass.c100.faa all_sb1_bin_prokka2.faa > all_loosetrim.plass.c100.all_bin.faa
+
 ENV = "clustering-env.yml"
+
 PFAM_LINK = "https://pfam.xfam.org/family/PF00521/alignment/full" # link to the PFAM seqs to use; here gyrA
 PFAM_BASE = "PF00521_full_gyra" # file basename to save PFAM as
-FAA = "loosetrim_plus_bin" # input basename faa amino acid sequence
-OUT_BASE = "loosetrim-plus-bin-PF00521-hmmscanT100" # input basename for hmmer output
+
+## original gyrA:
+#FAA = "loosetrim_plus_bin" # input basename faa amino acid sequence
+#OUT_BASE = "loosetrim-plus-bin-PF00521-hmmscanT100" # input basename for hmmer output
+
+## new gyrA (has full loose trim & hard trim, as well as concatenated seqs from bins)
+FAA = "all_hardtrim.plass.c100.all_bin"
+OUT_BASE = "plass-hardtrim-all-bin-PF00521-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100.all_bin"
+#OUT_BASE = "plass-loosetrim-all-bin-PF00521-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF00204/alignment/full" #gyrB
+#PFAM_BASE = "PF00204_full_gyrb"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF00204-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF00204-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF00181/alignment/full" # rplb
+#PFAM_BASE = "PF00181_full_rplb"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF00181-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF00181-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF00189/alignment/full" # rpsc
+#PFAM_BASE = "PF00189_full_rpsc"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF00189-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF00189-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF00154/alignment/full" # recA
+#PFAM_BASE = "PF00154_full_reca"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF00154-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF00154-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF01411/alignment/full" # alaS
+#PFAM_BASE = "PF01411_full_alas"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF01411-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF01411-hmmscanT100"
+
+#PFAM_LINK = "https://pfam.xfam.org/family/PF00562/alignment/full" # rpb2 d6
+#PFAM_BASE = "PF00562_full_rpb2d6"
+#FAA = "all_hardtrim.plass.c100"
+#OUT_BASE = "plass-hardtrim-PF00562-hmmscanT100"
+#FAA = "all_loosetrim.plass.c100"
+#OUT_BASE = "plass-loosetrim-PF00562-hmmscanT100"
 
 rule all:
     input: 
-        expand("outputs/pid/{out_base}.mat", out_base = OUT_BASE)
+        expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
  
 rule download_pfam:
     output: "inputs/pfam/{pfam_base}.sto"
@@ -124,42 +181,11 @@ rule pid_mat:
     conda: ENV
     script: 'clustering-workflow-mat.R'
 
-#rule pid_plot:
-#    output:
-#        html = 
-#        pdf =
-#    input: 
-#        mat = "outputs/pid/{out_base}.mat"
-#    conda: ENV
-#    script: 'clustering-workflow-plot.R'
-
-
-
-#    run:
-#        # inspired by https://gist.github.com/ngcrawford/3217022
-#        def splitIterator(text, size):
-#            """
-#            Iterator that splits string into list of substrings.
-#            """
-#            assert size > 0, "size should be > 0"
-#            for start in range(0, len(text), size):
-#                yield text[start:start + size]
-#        
-#
-#        # Filter names for contings
-#        names = open(input.names, "r")
-#        seq_names = names.read().split('\n')
-#        names.close()
-#
-#        # Write contigs/chrms to output fasta
-#        fasta = pysam.Fastafile(str(input.fasta))
-#        filtered_fa = open(output.filtered_fa,'w')
-#  
-#        for name in seq_names:
-#            seq = fasta.fetch(name)
-#            filtered_fa.write(">" + name + "\n")
-#            # split lines on 80 characters
-#            [filtered_fa.write(chars + "\n" ) for chars in splitIterator(seq, 80)]
-#
-#        # Clean up open files
-#        filtered_fa.close() 
+rule pid_mds:
+    output:
+        mds = "outputs/pid/{out_base}-mds.csv" 
+    input:
+        mat = "outputs/pid/{out_base}.mat", 
+        info = "inputs/hu_info_sb1.csv"
+    conda: ENV
+    script: 'clustering-workflow-mds.R'
