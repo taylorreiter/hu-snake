@@ -10,6 +10,7 @@ setwd("~/github/hu-snake/sandbox/PLASS/explore/markers/hmmer/")
 #
 ## make hmm
 # hmmbuild PF00521_full_gyra.hmm PF00521_full_gyra.txt
+# hmmpress PF00521_full_gyra.hmm
 ## locate the gyra sequences in the plass all_sb1 output. Use a bitscore cutoff of 100.
 # hmmscan -T 100 -o plass-gyra-hmmscanT100.out --tblout plass-gyra-seq-hmmscanT100.out --domtblout plass-gyra-dom-hmmscanT100.out --pfamtblout plass-gyra-pfam-hmmscanT100.out PF00521_full_gyra.hmm all_sb1.nostop.c100.fas 
 # 
