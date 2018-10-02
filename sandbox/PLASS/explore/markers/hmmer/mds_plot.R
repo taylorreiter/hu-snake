@@ -2,8 +2,11 @@ setwd("~/github/hu-snake/sandbox/PLASS/explore/markers/hmmer/")
 
 ## In Bash
 
+## check if this is correct
+# conda install -c bioconda hmmer3...
+
 ## download hmm
-# wget ...
+# wget -O PF00521_full_gyra.sto https://pfam.xfam.org/family/PF00521/alignment/full
 #
 ## make hmm
 # hmmbuild PF00521_full_gyra.hmm PF00521_full_gyra.txt
@@ -95,6 +98,7 @@ table(ov$bin) # check that all bins are well represented
 # esl-alipid CLUSTALAplass-gyra-hmmscanT100-gyra200-400.sto > CLUSTALAplass-gyra-hmmscanT100-gyra200-400.sto.pid
 pid <- read.table(file = "hmmalign/CLUSTALAplass-gyra-hmmscanT100-gyra200-400.sto.pid", skip = 1, header = F)
 colnames(pid) <- c('seqname1', 'seqname2', 'pid', 'nid', 'denomid', 'pmatch', 'nmatch', 'denommatch')
+hist(pid$pid)
 pid$alipid <- pid$nid / pid$nmatch # calculate percent identity only over length of sequence where two sequences overlapped
 pid$alipid <- 1-pid$alipid # change into distance, instead of similarity
 pid2 <- pid[ , c('seqname1', 'seqname2', 'alipid')]
