@@ -1,8 +1,7 @@
 # the directory in which this R script lives contains sym-linked files of the crumb assembly GhostKOALA output and the bin GhostKOALA output. 
 # the purpose of this script is to visualize the relative impact of the annotations from the crumbs against that of the bins.
 
-# for crumb assemblies:
-args <- c("~/github/hu-snake/sandbox/hu_info.csv", "~/github/hu-snake/outputs/hu-crumbs_bin/assembly/GhostKOALA/")
+setwd("/Users/taylorreiter/github/hu-snake/sandbox/bin_plus_crumb_assembly/")
 
 library(clusterProfiler)
 library(dplyr)
@@ -13,44 +12,25 @@ library(ggplot2)
 # read in metadata
 info <- read.csv("~/github/hu-snake/sandbox/hu_info.csv")
 
-# read in crumb data
-crumb_full <- list.files("crumb-assembly", "full.txt$", full.names = T)
-crumb_kegg <- list.files("crumb-assembly", "full.txt$")
-
-crumb_kegg <- gsub(".ko-ann-full.txt", "", crumb_kegg)
-crumb_df <- data.frame(locus_tag = NA, geneID = NA, name = NA, score = NA, second = NA, second_score = NA, bin = NA)
-for(i in 1:(length(crumb_full))){
-  kegg <- read.csv(crumb_full[i], sep = "\t", stringsAsFactors = FALSE, na.strings = "",
-                   col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score", "bin")) 
-  crumb_df <- rbind(crumb_df, kegg)
+import_kegg <- function(file, gsub_regex, origin){
+  # file name: full path to user_ko_definition.txt
+  # gsub_regex: regex to use on locus_tag column to create bin identifier. For crumbs, "(ass_[0-9]*)". For bins, "(_[0-9]*)"
+  # origin: either crumb or bin
+  df <- read.csv(file, sep = "\t", stringsAsFactors = FALSE, quote = "", na.strings = "", 
+                 col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score")) 
+  df$bin <- gsub(gsub_regex, "", df$locus_tag) # add column named bin for bin of origin
+  df$origin <- rep(origin, nrow(df)) # add row specifying identity
+  df <- df[df$score > 100, ] # retain only kegg ids for which the score is > 100
+  return(df)
 }
 
-# add row specifying identity
-crumb_df$origin <- rep("crumb", nrow(crumb_df))
-
-# read in bin data
-bin_full <- list.files("bin", "full.txt$", full.names = T)
-bin_full <- bin_full[2:31]
-bin_kegg <- list.files("bin", "full.txt$")
-bin_kegg <- bin_kegg[2:31]
-
-bin_kegg <- gsub(".ko-ann-full.txt", "", bin_kegg)
-bin_df <- data.frame(locus_tag = NA, geneID = NA, name = NA, score = NA, second = NA, second_score = NA, bin = NA)
-for(i in 1:(length(bin_full))){
-  kegg <- read.csv(bin_full[i], sep = "\t", stringsAsFactors = FALSE, na.strings = "",
-                   col.names = c("locus_tag", "geneID", "name", "score", "second", "second_score", "bin")) 
-  bin_df <- rbind(bin_df, kegg)
-}
-
-bin_df$origin <- rep("bin", nrow(bin_df))
-bin_df <- bin_df[bin_df$score > 100, ]
+crumb_df <- import_kegg(file = "outputs/hu-crumbs-bin/assembly/GhostKOALA/user_ko_definition.txt", 
+                        gsub_regex = "(ass_[0-9]*)", origin = "crumb")
+bin_df <- import_kegg(file = "outputs/hu-bins/GhostKOALA/user_ko_definition.txt", 
+                      gsub_regex = "(_[0-9]*)", origin = "bin")
 
 # combine two dfs
 kegg_df <- rbind(crumb_df, bin_df)
-
-# retain only kegg ids for which the score is > 100
-kegg_df <- kegg_df[kegg_df$score > 100, ]
-print("Pruned ko ids at 100")
 
 # Get mappings of KO id to BRITE hierarchy description
 keggo <- kegg_df[ , 2]
@@ -83,7 +63,6 @@ occur <- data.frame(id = rep(df$Description, df$Count))
 sum_df <- occur %>%
   group_by(id) %>%
   tally() 
-print("plot 1 BRITE hierarchies tallied")
 
 # set factor level to order plot by number of occurences
 sum_df$id<- factor(sum_df$id, 
@@ -97,8 +76,6 @@ plot1 <- ggplot(data = sum_df, aes(x = id, y = n)) +
   ylab("Count") +
   ggtitle("Total occurrence of each KEGG Ortholog") +
   coord_flip()
-
-print("Writing plot1")
 
 # write plot
 #pdf(args[3], width=8, height=9)
@@ -134,7 +111,6 @@ transfer_mappings <- function(kegg_df, mappings, df_label){
 
 
 # Transfer mappings
-print("transfer mappings")
 map <- transfer_mappings(kegg_df = kegg_df, mappings = mapping, df_label = "all")
 
 # tally the description; use to set order of the plot

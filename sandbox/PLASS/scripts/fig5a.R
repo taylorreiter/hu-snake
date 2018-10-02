@@ -42,23 +42,23 @@ kegg_df <- kegg_df %>%
 
 # bin
 unique_bin <- function(kegg_df, Bin){
-  hu <- kegg_df %>% filter(bin == Bin) # filter to bin of interest
-  hu_bin <- hu %>% filter(origin == "bin") # filter to hu bins
-  uni <- unique(hu_bin$geneID) # take unique (i.e. remove dups), get num of unique
-  df <- data.frame("geneID" = uni, "bin" = rep(Bin, length(uni)), "origin" = rep("bin", length(uni)))
-  return(df)
-}
+                hu <- kegg_df %>% filter(bin == Bin) # filter to bin of interest
+                hu_bin <- hu %>% filter(origin == "bin") # filter to hu bins
+                uni <- unique(hu_bin$geneID) # take unique (i.e. remove dups), get num of unique
+                df <- data.frame("geneID" = uni, "bin" = rep(Bin, length(uni)), "origin" = rep("bin", length(uni)))
+                return(df)
+              }
 
 # crumb
 unique_crumb <- function(kegg_df, Bin){
-  hu <- kegg_df %>% filter(bin == Bin)
-  hu_crumb <- hu %>% filter(origin == "crumb") # subset out crumb
-  hu_bin <- hu %>% filter(origin == "bin") # subset out bin
-  uni <- hu_crumb[!(hu_crumb$geneID %in% hu_bin$geneID), ] # get KOs in crumb that do not occur in bin
-  uni <- unique(uni$geneID) # take "unique" of these KOs (i.e. remove dups), return num
-  df <- data.frame("geneID" = uni, "bin" = rep(Bin, length(uni)), "origin" = rep("crumb", length(uni)))
-  return(df)
-}
+                  hu <- kegg_df %>% filter(bin == Bin)
+                  hu_crumb <- hu %>% filter(origin == "crumb") # subset out crumb
+                  hu_bin <- hu %>% filter(origin == "bin") # subset out bin
+                  uni <- hu_crumb[!(hu_crumb$geneID %in% hu_bin$geneID), ] # get KOs in crumb that do not occur in bin
+                  uni <- unique(uni$geneID) # take "unique" of these KOs (i.e. remove dups), return num
+                  df <- data.frame("geneID" = uni, "bin" = rep(Bin, length(uni)), "origin" = rep("crumb", length(uni)))
+                  return(df)
+                }
 
 uni_crumb <- lapply(unique(info$name), function(x) unique_crumb(kegg_df = kegg_df, Bin = x))
 uni_bin <- lapply(unique(info$name), function(x) unique_bin(kegg_df = kegg_df, Bin = x))
@@ -66,6 +66,7 @@ uni_crumb <- do.call(rbind, uni_crumb)
 uni_bin <- do.call(rbind, uni_bin)
 
 uni <- rbind(uni_crumb, uni_bin)
+
 # DO KEGG -----------------------------------------------
 
 keggparse <- read.delim("explore/ko00001_parse.txt", header= F, sep = "\t")
@@ -75,9 +76,11 @@ keggparse <- separate(keggparse, path, into = c("num2", "path"), sep = " ", remo
 keggparse <- separate(keggparse, V2, into = c("num3", "category"), sep = " ", remove = T, extra = "merge", file = "left")
 
 # deal with duplicates -- there are only 22,236 kegg orthologs in keggparse, but there are 49,935 rows, meaning there are duplicates. 
+# the solution below is a hack; I haven't come up wtih a better way to deal with it
+keggparse <- keggparse[match(unique(keggparse$geneID), keggparse$geneID), ]
 
-keggparse <- keggparse[match(unique(keggparse$geneID), keggparse$geneID),]
-
+# change the name of "Enzymes with EC numbers" to uncategorized
+keggparse$path <- gsub("Enzymes with EC numbers", "Uncategorized", keggparse$path)
 # keggo[!(keggo %in% keggparse$geneID)]
 # levels(keggparse$V2) # 49
 # levels(keggparse$V3) # 511
@@ -102,13 +105,21 @@ map <- filter(map, path %in% sum_df$path) # prune map to only top 20
 # Use the order set above to set order of factor levels in mapped data
 map$path <- factor(map$path, levels = sum_df$path[order(sum_df$n)])
 
-plot5a <- ggplot(map, aes(x = path, fill = origin)) + geom_bar() + theme_minimal() +
+# set colors to Felix's scheme
+steel_blue       = "#3e80b8ff" 
+selective_yellow = "#ffb500ff" # Excavator yellow
+viridian         = "#4b9179ff" # Green with a hint of blue
+
+plot5a <- ggplot(map, aes(x = path, fill = origin)) + 
+                geom_bar() + theme_minimal() +
                 theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
                 xlab("ortholog pathways") + 
                 ggtitle("Unique Occurrences of any Ortholog") +
-                coord_flip() +
-                scale_fill_hue(labels = c("unbinned content", "binned genomes"))
-
+                coord_flip()  +
+                # scale_fill_hue(labels = c("unbinned content", "binned genomes")) +
+                scale_fill_manual(values = c(selective_yellow, viridian), 
+                                  labels = c("unbinned content", "all binned genomes"))
+plot5a
 # write plot
 pdf(snakemake@output[["pdf"]], width = 6, height = 3)
 #pdf('outputs/figures/fig5a.pdf', width = 6, height = 3)
@@ -119,4 +130,25 @@ png(snakemake@output[["png"]], width = 6, height = 3, units = 'in', res = 300)
 #png('outputs/figures/fig5a.png', width = 6, height = 3, units = 'in', res = 300)
 plot5a
 dev.off()
+
+hu41 <- ggplot(map %>% filter(bin == "hu-genome41"), aes(x = path, fill = origin)) + geom_bar() + theme_minimal() +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+            xlab("ortholog pathways") + 
+            ggtitle("Unique Occurrences of any Ortholog") +
+            coord_flip()  +
+            # scale_fill_hue(labels = c("unbinned content", "binned genomes")) +
+            scale_fill_manual(values = c(selective_yellow, steel_blue), labels = c("unbinned content", expression(italic("M. harundinacea"))))
+
+map$origin2 <- ifelse(map$bin == "hu-genome41", "M. harundinacea", "All Bins")
+facet_41 <-ggplot(map, aes(x = path, fill = origin)) + 
+  facet_grid(~ origin2) +
+  geom_bar() + theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("ortholog pathways") + 
+  ggtitle("Unique Occurrences of any Ortholog") +
+  coord_flip()  +
+  scale_fill_manual(values = c(selective_yellow, steel_blue), 
+                    labels = c("unbinned content", "binned genomes")) +
+  scale_y_sqrt() +
+  theme(strip.text = element_text(face = "italic"))
 
