@@ -6,14 +6,13 @@
 
 ENV = "clustering-env.yml"
 
-PFAM_LINKS=[
-            ("PF00521_full_gyra.sto", "https://pfam.xfam.org/family/PF00521/alignment/full"), 
-            ("PF00204_full_gyrb.sto", "https://pfam.xfam.org/family/PF00204/alignment/full"),
-            ("PF00181_full_rplb.sto", "https://pfam.xfam.org/family/PF00181/alignment/full"),
-            ("PF00189_full_rpsc.sto", "https://pfam.xfam.org/family/PF00189/alignment/full"),
-            ("PF00154_full_reca.sto", "https://pfam.xfam.org/family/PF00154/alignment/full"),
-            ("PF01411_full_alas.sto", "https://pfam.xfam.org/family/PF01411/alignment/full"),
-            ("PF00562_full_rpb2d6.sto", "https://pfam.xfam.org/family/PF00562/alignment/full")]
+PFAM={"PF00521_full_gyra": "https://pfam.xfam.org/family/PF00521/alignment/full", 
+      "PF00204_full_gyrb": "https://pfam.xfam.org/family/PF00204/alignment/full",
+      "PF00181_full_rplb": "https://pfam.xfam.org/family/PF00181/alignment/full",
+      "PF00189_full_rpsc": "https://pfam.xfam.org/family/PF00189/alignment/full",
+      "PF00154_full_reca": "https://pfam.xfam.org/family/PF00154/alignment/full",
+      "PF01411_full_alas": "https://pfam.xfam.org/family/PF01411/alignment/full",
+      "PF00562_full_rpb2d6": "https://pfam.xfam.org/family/PF00562/alignment/full"}
 
 PFAM_BASE=["PF00521_full_gyra", 
             "PF00204_full_gyrb",
@@ -23,7 +22,7 @@ PFAM_BASE=["PF00521_full_gyra",
             "PF01411_full_alas",
             "PF00562_full_rpb2d6"]
 
-FAA = "all_hardtrim.plass.c100.all_bin"
+FAA = ["all_hardtrim.plass.c100.all_bin"]
 #FAA = "all_loosetrim.plass.c100.all_bin"
 
 OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
@@ -44,23 +43,22 @@ OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
 
 rule all:
     input: 
-        expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
+        #expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
+        ["outputs/hmmscan/{out}.out".format(out=out_base) for out_base in OUT_BASE],
+        ["outputs/hmmscan/{out}-tbl.out".format(out=out_base) for out_base in OUT_BASE],
+        ["outputs/hmmscan/{out}-dom.out".format(out=out_base) for out_base in OUT_BASE]
 
 rule download_pfam:
-    output:
-        ["inputs/pfam/{f}".format(f=filename) for (filename, _) in PFAM_LINKS]
+    output: "inputs/pfam/{pfam_base}.sto"
     run:
-        for (filename, link) in PFAM_LINKS:
-            shell("wget {link} -0 outdir/{filename}".format(
-                link=link, filename=filename)) 
+        shell("wget {PFAM[params.pfam_base]} -O inputs/pfam/{params.pfam_base}")
 
 rule hmmbuild:
-    output: "outputs/hmmbuild/{pfam_base}.hmm"
     input: "inputs/pfam/{pfam_base}.sto"
-    conda: ENV
-    shell:'''
-    hmmbuild {output} {input}
-    hmmpress {output}
+    output: "outputs/hmmbuild/{pfam_base}.hmm"
+    shell: '''
+    hmmbuild outputs/hmmbuild/{wildcard.pfam_base}.hmm inputs/pfam/{wildcard.pfam_base}.sto   
+    hmmpress outputs/hmmbuild/{wildcard.pfam_base}.hmm
     '''
 
 rule download_faa:
@@ -88,16 +86,17 @@ rule format_faa_headers_dup:
  
 rule hmmscan:
     output:
-        out = "outputs/hmmscan/{out_base}.out",
-        tbl = "outputs/hmmscan/{out_base}-tbl.out",
-        dom = "outputs/hmmscan/{out_base}-dom.out"
+        ["outputs/hmmscan/{out}.out".format(out=out_base) for out_base in OUT_BASE],
+        ["outputs/hmmscan/{out}-tbl.out".format(out=out_base) for out_base in OUT_BASE],
+        ["outputs/hmmscan/{out}-dom.out".format(out=out_base) for out_base in OUT_BASE]
     input:
-        hmm = expand("outputs/hmmbuild/{pfam_base}.hmm", pfam_base = PFAM_BASE),
-        faa = expand("outputs/plass/{faa}.cut.dup.faa", faa = FAA)
-    conda: ENV
-    shell:'''
-    hmmscan -T 100 -o {output.out} --tblout {output.tbl} --domtblout {output.dom} {input.hmm} {input.faa} 
-    '''
+        ["outputs/hmmbuild/{f}.hmm".format(f=pfam_base) for (pfam_base, _) in PFAM],
+        ["outputs/plass/{fa}.cut.dup.faa".format(fa=faa) for faa in FAA]
+    run:
+        for (pfam_base, _) in PFAM:
+            for out in OUT_BASE:
+                for faa in FAA:
+                    shell("hmmscan -T 100 -o outputs/hmmscan/{out}.out --tblout outputs/hmmscan/{out}-tbl.out --domtblout outputs/hmmscan/{out}-dom.out outputs/hmmbuild/{pfam_base}.hmm outputs/plass/{faa}.cut.dup.faa".format(pfam_base=pfam_base, out=out, faa = faa))
 
 rule get_rhmmer:
     output: "rhmmer.R"
