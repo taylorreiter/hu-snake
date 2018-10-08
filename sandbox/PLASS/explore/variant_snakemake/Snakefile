@@ -1,0 +1,90 @@
+ENV = "env.yml"
+NBHD = "hu-genome36"
+
+rule all:
+    input: 
+        "outputs/paladin/{nbhd}.hardtrim.sam.flagstat"
+
+# run per nbhd (definitely) 
+# & per pfam domain? 
+
+rule download_pfam:
+
+rule hmmscan:
+
+rule download_plass:
+    output: "inputs/plass/{nbhd}.hardtrim.plass.c100.fa" # shouldn't need to use clean if only dealing with one nbhd
+    shell:'''
+    touch {output} #place holder for downloading plass hardtrim results
+    '''
+
+rule format_plass_cut:
+    output: "outputs/plass/{nbhd}.hardtrim.plass.c100.cut.faa"
+    input: "inputs/plass/{nbhd}.hardtrim.plass.c100.fa"
+    shell:'''
+    cut -d ' ' -f1 {input} > {output}
+    '''
+
+rule format_plass_dup:
+    output: "outputs/plass/{nbhd}.hardtrim.plass.c100.cut.dup.fa"
+    input: "outputs/plass/{nbhd}.hardtrim.plass.c100.cut.fa"
+    shell:'''
+    awk '(/^>/ && s[$0]++){{$0=$0"_"s[$0]}}1;' {input} > {output}
+    '''
+
+rule paladin_index:
+    output: "outputs/plass/{nbhd}.hardtrim.plass.c100.cut.dup.fai.bwt"
+    input: "outputs/plass/{nbhd}.hardtrim.plass.c100.cut.dup.fa"
+    conda: ENV
+    shell:'''
+    paladin index -r3 {input}
+    '''
+
+rule paladin_align:
+    output: "outputs/paladin/{nbhd}.hardtrim.sam"
+    input:
+        indx="outputs/plass/{nbhd}.hardtrim.plass.c100.cut.dup.fa",
+        reads="inputs/reads/{nbhd}.hardtrim.reads.gz"
+    conda: ENV
+    shell:'''
+    paladin align -f 125 -t 2 {input.indx} {input.reads} > {output}
+    '''
+
+rule samtools_flagstat_paladin:
+    output: "outputs/paladin/{nbhd}.hardtrim.sam.flagstat"
+    input: "outputs/paladin/{nbhd}.hardtrim.sam"
+    conda: ENV
+    shell:'''
+    samtools flagstat {input} > {output}
+    '''
+
+rule samtools_view_paladin:
+    output: "outputs/paladin/{nbhd}.hardtrim.bam"
+    input: "outputs/paladin/{nbhd}.hardtrim.sam"
+    conda: ENV
+    shell:'''
+    samtools view -b {input} > {output}
+    '''
+
+rule samtools_sort_paladin:
+    output: "outputs/paladin/{nbhd}.hardtrim.sort.bam"
+    input: "outputs/paladin/{nbhd}.hardtrim.bam"
+    conda: ENV
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+
+rule samtools_index_paladin:
+    output: "outputs/paladin/{nbhd}.hardtrim.sort.bam.bai"
+    input: "outputs/paladin/{nbhd}.hardtrim.sort.bam"
+    conda: ENV
+    shell:'''
+    samtools index {input} 
+    '''
+
+# from this bam file, extract small bam files.
+# extract one for each PLASS seq that matched the pfam domain of interest, output in hmmscan
+
+rule def_seqs_of_interest:
+
+
