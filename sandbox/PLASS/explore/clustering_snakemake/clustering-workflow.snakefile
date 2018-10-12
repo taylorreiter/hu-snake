@@ -6,21 +6,13 @@
 
 ENV = "clustering-env.yml"
 
-PFAM_LINK=["https://pfam.xfam.org/family/PF00521/alignment/full", 
-           "https://pfam.xfam.org/family/PF00204/alignment/full",
-           "https://pfam.xfam.org/family/PF00181/alignment/full",
-           "https://pfam.xfam.org/family/PF00189/alignment/full",
-           "https://pfam.xfam.org/family/PF00154/alignment/full",
-           "https://pfam.xfam.org/family/PF01411/alignment/full",
-           "https://pfam.xfam.org/family/PF00562/alignment/full"]
-
-PFAM_BASE=["PF00521_gyra", # gyrA
-            "PF00204_gyrb", # gyrB
-            "PF00181_rplb", # rplB
-            "PF00189_rpsc", # rpsC
-            "PF00154_reca", # recA
-            "PF01411_alas", # alaS
-            "PF00562_rpb2d6"] # rpb2 d6
+PFAM_BASE=["PF00521_gyra",
+            "PF00204_gyrb",
+            "PF00181_rplb", 
+            "PF00189_rpsc",
+            "PF00154_reca",
+            "PF01411_alas",
+            "PF00562_rpb2d6"] 
 
 FAA = ["all_hardtrim.plass.c100.all_bin"]
 #FAA = "all_loosetrim.plass.c100.all_bin"
@@ -28,42 +20,18 @@ FAA = ["all_hardtrim.plass.c100.all_bin"]
 TRIM = ["hard"]
 # TRIM = ["loose"]
 
-#OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF00204-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF00181-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF00189-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF00154-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF01411-hmmscanT100",
-#            "plass-hardtrim-all-bin-PF00562-hmmscanT100"]
-
-#OUT_BASE = ["plass-loosetrim-all-bin-PF00521-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF00204-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF00181-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF00189-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF00154-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF01411-hmmscanT100",
-#            "plass-loosetrim-all-bin-PF00562-hmmscanT100"]
-
 rule all:
     input: 
         expand("outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mds.csv", trim = TRIM, pfam_base = PFAM_BASE)
 
-
 rule download_pfam:
     output: "inputs/pfam/{pfam_base}.sto"
     params: 
-        #pfam_link = PFAM_LINK,
-        #pfam_base = PFAM_BASE,
         out_dir = "inputs/pfam"
     shell:'''
     pfam=$(echo {wildcards.pfam_base} | cut -f1 -d"_")
     wget -O {output} https://pfam.xfam.org/family/${{pfam}}/alignment/full
     '''
-
-#rule download_pfam:
-#    output: "inputs/pfam/{pfam_base}.sto"
-#    run:
-#        shell("wget {PFAM[wildcards.pfam_base]} -O {input}")
 
 rule hmmbuild:
     input: "inputs/pfam/{pfam_base}.sto"
