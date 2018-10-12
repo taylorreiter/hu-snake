@@ -1,5 +1,3 @@
-import pysam
-
 # upstream code:
 # cp ../../../../outputs/hu-bins/prokka/sb1_tmp/all_sb1_bin_prokka.faa .
 # sed 's/>/&BIN-/' all_sb1_bin_prokka.faa > all_sb1_bin_prokka2.faa
@@ -8,82 +6,39 @@ import pysam
 
 ENV = "clustering-env.yml"
 
-PFAM_LINK = "https://pfam.xfam.org/family/PF00521/alignment/full" # link to the PFAM seqs to use; here gyrA
-PFAM_BASE = "PF00521_full_gyra" # file basename to save PFAM as
+PFAM_BASE=["PF00521_gyra",
+            "PF00204_gyrb",
+            "PF00181_rplb", 
+            "PF00189_rpsc",
+            "PF00154_reca",
+            "PF01411_alas",
+            "PF00562_rpb2d6"] 
 
-## original gyrA:
-#FAA = "loosetrim_plus_bin" # input basename faa amino acid sequence
-#OUT_BASE = "loosetrim-plus-bin-PF00521-hmmscanT100" # input basename for hmmer output
-
-## new gyrA (has full loose trim & hard trim, as well as concatenated seqs from bins)
-FAA = "all_hardtrim.plass.c100.all_bin"
-OUT_BASE = "plass-hardtrim-all-bin-PF00521-hmmscanT100"
+FAA = ["all_hardtrim.plass.c100.all_bin"]
 #FAA = "all_loosetrim.plass.c100.all_bin"
-#OUT_BASE = "plass-loosetrim-all-bin-PF00521-hmmscanT100"
 
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00204/alignment/full" #gyrB
-#PFAM_BASE = "PF00204_full_gyrb"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00204-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00204-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00181/alignment/full" # rplb
-#PFAM_BASE = "PF00181_full_rplb"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00181-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00181-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00189/alignment/full" # rpsc
-#PFAM_BASE = "PF00189_full_rpsc"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00189-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00189-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00154/alignment/full" # recA
-#PFAM_BASE = "PF00154_full_reca"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00154-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00154-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF01411/alignment/full" # alaS
-#PFAM_BASE = "PF01411_full_alas"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF01411-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF01411-hmmscanT100"
-
-#PFAM_LINK = "https://pfam.xfam.org/family/PF00562/alignment/full" # rpb2 d6
-#PFAM_BASE = "PF00562_full_rpb2d6"
-#FAA = "all_hardtrim.plass.c100"
-#OUT_BASE = "plass-hardtrim-PF00562-hmmscanT100"
-#FAA = "all_loosetrim.plass.c100"
-#OUT_BASE = "plass-loosetrim-PF00562-hmmscanT100"
+TRIM = ["hard"]
+# TRIM = ["loose"]
 
 rule all:
     input: 
-        expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
- 
+        expand("outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mds.csv", trim = TRIM, pfam_base = PFAM_BASE)
+
 rule download_pfam:
     output: "inputs/pfam/{pfam_base}.sto"
     params: 
-        pfam_link = PFAM_LINK,
-        pfam_base = PFAM_BASE,
         out_dir = "inputs/pfam"
     shell:'''
-    wget -O {params.out_dir}/{params.pfam_base}.sto {params.pfam_link}
+    pfam=$(echo {wildcards.pfam_base} | cut -f1 -d"_")
+    wget -O {output} https://pfam.xfam.org/family/${{pfam}}/alignment/full
     '''
 
 rule hmmbuild:
-    output: "outputs/hmmbuild/{pfam_base}.hmm"
     input: "inputs/pfam/{pfam_base}.sto"
-    conda: ENV
-    shell:'''
-    hmmbuild {output} {input}
-    hmmpress {output}
+    output: "outputs/hmmbuild/{pfam_base}.hmm"
+    shell: '''
+    hmmbuild outputs/hmmbuild/{wildcards.pfam_base}.hmm inputs/pfam/{wildcards.pfam_base}.sto   
+    hmmpress outputs/hmmbuild/{wildcards.pfam_base}.hmm
     '''
 
 rule download_faa:
@@ -111,11 +66,11 @@ rule format_faa_headers_dup:
  
 rule hmmscan:
     output:
-        out = "outputs/hmmscan/{out_base}.out",
-        tbl = "outputs/hmmscan/{out_base}-tbl.out",
-        dom = "outputs/hmmscan/{out_base}-dom.out"
+        out = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.out",
+        tbl = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-tbl.out",
+        dom = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-dom.out"
     input:
-        hmm = expand("outputs/hmmbuild/{pfam_base}.hmm", pfam_base = PFAM_BASE),
+        hmm = "outputs/hmmbuild/{pfam_base}.hmm",
         faa = expand("outputs/plass/{faa}.cut.dup.faa", faa = FAA)
     conda: ENV
     shell:'''
@@ -130,33 +85,33 @@ rule get_rhmmer:
 
 rule def_overlap_window_and_find_reads:
     input:
-        dom = "outputs/hmmscan/{out_base}-dom.out",
+        dom = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-dom.out",
         rhmmer = "rhmmer.R"
     output:
-        keep = "outputs/hmmscan/{out_base}-NAMES.txt"
+        keep = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-NAMES.txt"
     conda: ENV
     script:'clustering-workflow-overlaps.R'
 
 rule grab_overlap_faa:
-    output: filtered_fa = "outputs/hmmscan/{out_base}.faa"
+    output: filtered_fa = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.faa"
     input:
         fasta = expand("outputs/plass/{faa}.cut.dup.faa", faa = FAA),
-        names = "outputs/hmmscan/{out_base}-NAMES.txt" 
+        names = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-NAMES.txt" 
     shell:'''
     ./extract-hmmscan-matches.py {input.names} {input.fasta} > {output}
     '''
 
 rule mafft:
-    output: "outputs/mafft/{out_base}-mafft.faa"
-    input: "outputs/hmmscan/{out_base}.faa"
+    output: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mafft.faa"
+    input: "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.faa"
     conda: ENV
     shell:'''
     mafft --auto --reorder {input} > {output}
     '''
 
 rule mafft_to_sto:
-    output: "outputs/mafft/{out_base}.sto"
-    input: "outputs/mafft/{out_base}-mafft.faa"
+    output: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.sto"
+    input: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mafft.faa"
     run:
         from Bio import SeqIO
         from Bio import AlignIO
@@ -166,8 +121,8 @@ rule mafft_to_sto:
             count = SeqIO.write(align, handle, "stockholm")
 
 rule calc_pid:
-    output: "outputs/pid/{out_base}.pid"
-    input: "outputs/mafft/{out_base}.sto"
+    output: "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.pid"
+    input: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.sto"
     conda: ENV
     shell:'''
     esl-alipid {input} > {output}
@@ -175,17 +130,17 @@ rule calc_pid:
 
 rule pid_mat:
     output:
-        mat = "outputs/pid/{out_base}.mat" 
+        mat = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.mat" 
     input:
-        pid = "outputs/pid/{out_base}.pid"
+        pid = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.pid"
     conda: ENV
     script: 'clustering-workflow-mat.R'
 
 rule pid_mds:
     output:
-        mds = "outputs/pid/{out_base}-mds.csv" 
+        mds = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mds.csv" 
     input:
-        mat = "outputs/pid/{out_base}.mat", 
+        mat = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.mat", 
         info = "inputs/hu_info_sb1.csv"
     conda: ENV
     script: 'clustering-workflow-mds.R'
