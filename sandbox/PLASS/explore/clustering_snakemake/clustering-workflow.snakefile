@@ -6,32 +6,35 @@
 
 ENV = "clustering-env.yml"
 
-PFAM={"PF00521_full_gyra": "https://pfam.xfam.org/family/PF00521/alignment/full", 
-      "PF00204_full_gyrb": "https://pfam.xfam.org/family/PF00204/alignment/full",
-      "PF00181_full_rplb": "https://pfam.xfam.org/family/PF00181/alignment/full",
-      "PF00189_full_rpsc": "https://pfam.xfam.org/family/PF00189/alignment/full",
-      "PF00154_full_reca": "https://pfam.xfam.org/family/PF00154/alignment/full",
-      "PF01411_full_alas": "https://pfam.xfam.org/family/PF01411/alignment/full",
-      "PF00562_full_rpb2d6": "https://pfam.xfam.org/family/PF00562/alignment/full"}
+PFAM_LINK=["https://pfam.xfam.org/family/PF00521/alignment/full", 
+           "https://pfam.xfam.org/family/PF00204/alignment/full",
+           "https://pfam.xfam.org/family/PF00181/alignment/full",
+           "https://pfam.xfam.org/family/PF00189/alignment/full",
+           "https://pfam.xfam.org/family/PF00154/alignment/full",
+           "https://pfam.xfam.org/family/PF01411/alignment/full",
+           "https://pfam.xfam.org/family/PF00562/alignment/full"]
 
-PFAM_BASE=["PF00521_full_gyra", 
-            "PF00204_full_gyrb",
-            "PF00181_full_rplb",
-            "PF00189_full_rpsc",
-            "PF00154_full_reca",
-            "PF01411_full_alas",
-            "PF00562_full_rpb2d6"]
+PFAM_BASE=["PF00521_gyra", # gyrA
+            "PF00204_gyrb", # gyrB
+            "PF00181_rplb", # rplB
+            "PF00189_rpsc", # rpsC
+            "PF00154_reca", # recA
+            "PF01411_alas", # alaS
+            "PF00562_rpb2d6"] # rpb2 d6
 
 FAA = ["all_hardtrim.plass.c100.all_bin"]
 #FAA = "all_loosetrim.plass.c100.all_bin"
 
-OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
-            "plass-hardtrim-all-bin-PF00204-hmmscanT100",
-            "plass-hardtrim-all-bin-PF00181-hmmscanT100",
-            "plass-hardtrim-all-bin-PF00189-hmmscanT100",
-            "plass-hardtrim-all-bin-PF00154-hmmscanT100",
-            "plass-hardtrim-all-bin-PF01411-hmmscanT100",
-            "plass-hardtrim-all-bin-PF00562-hmmscanT100"]
+TRIM = ["hard"]
+# TRIM = ["loose"]
+
+#OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF00204-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF00181-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF00189-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF00154-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF01411-hmmscanT100",
+#            "plass-hardtrim-all-bin-PF00562-hmmscanT100"]
 
 #OUT_BASE = ["plass-loosetrim-all-bin-PF00521-hmmscanT100",
 #            "plass-loosetrim-all-bin-PF00204-hmmscanT100",
@@ -43,22 +46,31 @@ OUT_BASE = ["plass-hardtrim-all-bin-PF00521-hmmscanT100",
 
 rule all:
     input: 
-        #expand("outputs/pid/{out_base}-mds.csv", out_base = OUT_BASE)
-        ["outputs/hmmscan/{out}.out".format(out=out_base) for out_base in OUT_BASE],
-        ["outputs/hmmscan/{out}-tbl.out".format(out=out_base) for out_base in OUT_BASE],
-        ["outputs/hmmscan/{out}-dom.out".format(out=out_base) for out_base in OUT_BASE]
+        expand("outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mds.csv", trim = TRIM, pfam_base = PFAM_BASE)
+
 
 rule download_pfam:
     output: "inputs/pfam/{pfam_base}.sto"
-    run:
-        shell("wget {PFAM[params.pfam_base]} -O inputs/pfam/{params.pfam_base}")
+    params: 
+        #pfam_link = PFAM_LINK,
+        #pfam_base = PFAM_BASE,
+        out_dir = "inputs/pfam"
+    shell:'''
+    pfam=$(echo {wildcards.pfam_base} | cut -f1 -d"_")
+    wget -O {output} https://pfam.xfam.org/family/${{pfam}}/alignment/full
+    '''
+
+#rule download_pfam:
+#    output: "inputs/pfam/{pfam_base}.sto"
+#    run:
+#        shell("wget {PFAM[wildcards.pfam_base]} -O {input}")
 
 rule hmmbuild:
     input: "inputs/pfam/{pfam_base}.sto"
     output: "outputs/hmmbuild/{pfam_base}.hmm"
     shell: '''
-    hmmbuild outputs/hmmbuild/{wildcard.pfam_base}.hmm inputs/pfam/{wildcard.pfam_base}.sto   
-    hmmpress outputs/hmmbuild/{wildcard.pfam_base}.hmm
+    hmmbuild outputs/hmmbuild/{wildcards.pfam_base}.hmm inputs/pfam/{wildcards.pfam_base}.sto   
+    hmmpress outputs/hmmbuild/{wildcards.pfam_base}.hmm
     '''
 
 rule download_faa:
@@ -86,17 +98,16 @@ rule format_faa_headers_dup:
  
 rule hmmscan:
     output:
-        ["outputs/hmmscan/{out}.out".format(out=out_base) for out_base in OUT_BASE],
-        ["outputs/hmmscan/{out}-tbl.out".format(out=out_base) for out_base in OUT_BASE],
-        ["outputs/hmmscan/{out}-dom.out".format(out=out_base) for out_base in OUT_BASE]
+        out = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.out",
+        tbl = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-tbl.out",
+        dom = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-dom.out"
     input:
-        ["outputs/hmmbuild/{f}.hmm".format(f=pfam_base) for (pfam_base, _) in PFAM],
-        ["outputs/plass/{fa}.cut.dup.faa".format(fa=faa) for faa in FAA]
-    run:
-        for (pfam_base, _) in PFAM:
-            for out in OUT_BASE:
-                for faa in FAA:
-                    shell("hmmscan -T 100 -o outputs/hmmscan/{out}.out --tblout outputs/hmmscan/{out}-tbl.out --domtblout outputs/hmmscan/{out}-dom.out outputs/hmmbuild/{pfam_base}.hmm outputs/plass/{faa}.cut.dup.faa".format(pfam_base=pfam_base, out=out, faa = faa))
+        hmm = "outputs/hmmbuild/{pfam_base}.hmm",
+        faa = expand("outputs/plass/{faa}.cut.dup.faa", faa = FAA)
+    conda: ENV
+    shell:'''
+    hmmscan -T 100 -o {output.out} --tblout {output.tbl} --domtblout {output.dom} {input.hmm} {input.faa} 
+    '''
 
 rule get_rhmmer:
     output: "rhmmer.R"
@@ -106,33 +117,33 @@ rule get_rhmmer:
 
 rule def_overlap_window_and_find_reads:
     input:
-        dom = "outputs/hmmscan/{out_base}-dom.out",
+        dom = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-dom.out",
         rhmmer = "rhmmer.R"
     output:
-        keep = "outputs/hmmscan/{out_base}-NAMES.txt"
+        keep = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-NAMES.txt"
     conda: ENV
     script:'clustering-workflow-overlaps.R'
 
 rule grab_overlap_faa:
-    output: filtered_fa = "outputs/hmmscan/{out_base}.faa"
+    output: filtered_fa = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.faa"
     input:
         fasta = expand("outputs/plass/{faa}.cut.dup.faa", faa = FAA),
-        names = "outputs/hmmscan/{out_base}-NAMES.txt" 
+        names = "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-NAMES.txt" 
     shell:'''
     ./extract-hmmscan-matches.py {input.names} {input.fasta} > {output}
     '''
 
 rule mafft:
-    output: "outputs/mafft/{out_base}-mafft.faa"
-    input: "outputs/hmmscan/{out_base}.faa"
+    output: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mafft.faa"
+    input: "outputs/hmmscan/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.faa"
     conda: ENV
     shell:'''
     mafft --auto --reorder {input} > {output}
     '''
 
 rule mafft_to_sto:
-    output: "outputs/mafft/{out_base}.sto"
-    input: "outputs/mafft/{out_base}-mafft.faa"
+    output: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.sto"
+    input: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mafft.faa"
     run:
         from Bio import SeqIO
         from Bio import AlignIO
@@ -142,8 +153,8 @@ rule mafft_to_sto:
             count = SeqIO.write(align, handle, "stockholm")
 
 rule calc_pid:
-    output: "outputs/pid/{out_base}.pid"
-    input: "outputs/mafft/{out_base}.sto"
+    output: "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.pid"
+    input: "outputs/mafft/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.sto"
     conda: ENV
     shell:'''
     esl-alipid {input} > {output}
@@ -151,17 +162,17 @@ rule calc_pid:
 
 rule pid_mat:
     output:
-        mat = "outputs/pid/{out_base}.mat" 
+        mat = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.mat" 
     input:
-        pid = "outputs/pid/{out_base}.pid"
+        pid = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.pid"
     conda: ENV
     script: 'clustering-workflow-mat.R'
 
 rule pid_mds:
     output:
-        mds = "outputs/pid/{out_base}-mds.csv" 
+        mds = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100-mds.csv" 
     input:
-        mat = "outputs/pid/{out_base}.mat", 
+        mat = "outputs/pid/plass-{trim}trim-all-bin-{pfam_base}-hmmscanT100.mat", 
         info = "inputs/hu_info_sb1.csv"
     conda: ENV
     script: 'clustering-workflow-mds.R'
