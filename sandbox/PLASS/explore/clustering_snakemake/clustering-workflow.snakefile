@@ -14,11 +14,12 @@ PFAM_BASE=["PF00521_gyra",
             "PF01411_alas",
             "PF00562_rpb2d6"] 
 
-FAA = ["all_hardtrim.plass.c100.all_bin"]
-#FAA = "all_loosetrim.plass.c100.all_bin"
+#FAA = ["all_hardtrim.plass.c100.all_bin"]
+FAA = "all_loosetrim.plass.c100.all_bin"
 
-TRIM = ["hard"]
-# TRIM = ["loose"]
+# TRIM = ["hard"]
+TRIM = ["loose"]
+
 
 rule all:
     input: 
