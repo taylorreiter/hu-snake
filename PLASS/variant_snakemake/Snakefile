@@ -1,5 +1,6 @@
 ENV = "env.yml"
-NBHD = "hu-genome36"
+ENV2 = "env2.yml"
+NBHD = "hu-genome41"
 TRIM = ["hard"]
 PFAM_BASE=["PF00521_gyra"]
 
@@ -9,7 +10,12 @@ rule all:
         #expand("outputs/hmmscan/{nbhd}.{trim}trim.plass.{pfam_base}-hmmscanT100-dom.out", nbhd = NBHD, trim = TRIM, pfam_base = PFAM_BASE),
         #expand("outputs/paladin/{nbhd}.{trim}trim.sort.bam.bai", nbhd = NBHD, trim = TRIM, pfam_base = PFAM_BASE)
         #expand("outputs/comp/{nbhd}_{trim}trim_{pfam_base}_k31.csv", nbhd = NBHD, trim = TRIM, pfam_base = PFAM_BASE) 
-        dynamic("outputs/comp/cut{i}.txt")
+        #dynamic("outputs/megahit/cut{i}/cut{i}.contigs.fa")
+        #dynamic("outputs/megahit/cut{i}-longest.fa")
+        #dynamic("outputs/faa/cut{i}.faa"),
+        #dynamic("outputs/ffn/cut{i}.ffn")
+        #dynamic("outputs/transdecoder/cut{i}_longest_orfs.pep")
+        dynamic("outputs/hmmscan_orf/cut{i}-dom.out")
 
 # run per nbhd (definitely) 
 # & per pfam domain? 
@@ -194,3 +200,129 @@ rule cut_dendo:
     input: comp = expand("outputs/comp/{nbhd}_{trim}trim_{pfam_base}_k31.csv", nbhd = NBHD, trim = TRIM, pfam_base = PFAM_BASE)
     conda: ENV
     script: 'variant-workflow-cut-dendo.R'
+
+rule cat_dendo_reads:
+    output: "outputs/comp/cut{i}.fa"
+    input: "outputs/comp/cut{i}.txt"
+    run:
+        import re
+        print(str(input))	
+        with open(str(input)) as f:
+            cut_bams = f.readlines()
+            cut_bams = [x.strip() for x in cut_bams] 
+            cut_bam_reads = ["outputs/bam_subsets/" + s + ".fa" for s in cut_bams]
+            cut_base = re.sub('.*/', '', str(input))
+            cut_base = re.sub(".txt", '', cut_base)
+            with open('outputs/comp/' + cut_base + '.fa', 'w') as outfile:
+                for bam_reads in cut_bam_reads:
+                    with open(bam_reads) as infile:
+                        for line in infile:
+                            outfile.write(line) 
+
+rule extract_dendo_paired_reads:
+    output:
+        pairs = "outputs/dendo/cut{i}_paired.fa",
+        single = "outputs/dendo/cut{i}_single.fa"
+    input: "outputs/comp/cut{i}.fa"
+    conda: ENV
+    shell:'''
+    extract-paired-reads.py -p {output.pairs} -s {output.single} {input}
+    '''
+
+rule megahit_dendo_paired_reads:
+    output: "outputs/megahit/cut{i}/cut{i}.contigs.fa"
+    input: "outputs/dendo/cut{i}_paired.fa"
+    conda: ENV
+    shell:'''
+    megahit --12 {input} -o outputs/megahit/cut{wildcards.i} --out-prefix cut{wildcards.i} --continue
+    '''
+
+#rule faidx_megahit:
+#    output: "outputs/megahit/cut{i}/cut{i}.contigs.fa.fai"
+#    input: "outputs/megahit/cut{i}/cut{i}.contigs.fa"
+#    conda: ENV
+#    shell:'''
+#    samtools faidx {input}
+#    '''
+
+#rule select_longest_megahit_contig:
+#    output: "outputs/megahit/cut{i}-longest.fa"
+#    input: 
+#        fai="outputs/megahit/cut{i}/cut{i}.contigs.fa.fai",
+#        fa="outputs/megahit/cut{i}/cut{i}.contigs.fa"
+#    conda: ENV
+#    shell:'''
+#    var=`sort -k2,2nr -k2,2 {input.fai} | head -n 1 | cut -f1`
+#    samtools faidx {input.fa} $var > {output}
+#    '''
+
+#rule prokka:
+#    output: 
+#        gff="outputs/prokka/cut{i}.gff",
+#        faa="outputs/prokka/cut{i}.faa",
+#        fna="outputs/prokka/cut{i}.ffn"
+#    input: "outputs/megahit/cut{i}/cut{i}.contigs.fa"
+#    conda: ENV
+#    params:
+#        outdir = 'outputs/prokka',
+#        nbhd = NBHD
+#    shell:'''
+#    prokka {input} --outdir {params.outdir} --prefix cut{wildcards.i} --metagenome --force --locustag {params.nbhd}-cut{wildcards.i}
+    # touch {output.faa}
+#    '''
+
+rule transdecoder:
+    output: 
+        cds="outputs/transdecoder/cut{i}_longest_orfs.cds",
+        gff="outputs/transdecoder/cut{i}_longest_orfs.gff3",
+        pep="outputs/transdecoder/cut{i}_longest_orfs.pep"
+    input: "outputs/megahit/cut{i}/cut{i}.contigs.fa"
+    params: outdir = "outputs/transdecoder"
+    conda: ENV
+    shell:'''
+    TransDecoder.LongOrfs -t {input} 
+    rm -rf *checkpoints_longorfs/
+    mv cut{wildcards.i}.contigs.fa.transdecoder_dir/longest_orfs.cds {params.outdir}/cut{wildcards.i}_longest_orfs.cds
+    mv cut{wildcards.i}.contigs.fa.transdecoder_dir/longest_orfs.gff3 {params.outdir}/cut{wildcards.i}_longest_orfs.gff3
+    mv cut{wildcards.i}.contigs.fa.transdecoder_dir/longest_orfs.pep {params.outdir}/cut{wildcards.i}_longest_orfs.pep
+    rm -rf cut{wildcards.i}.contigs.fa.transdecoder_dir
+    '''
+
+rule hmmscan_orfs:
+    output:
+        dom = "outputs/hmmscan_orf/cut{i}-dom.out"
+    input:
+        hmm = expand("outputs/hmmbuild/{pfam_base}.hmm", pfam_base = PFAM_BASE),
+        pep = "outputs/transdecoder/cut{i}_longest_orfs.pep"
+    conda: ENV
+    shell:'''
+    hmmscan -T 100 --domtblout {output.dom} {input.hmm} {input.pep} 
+    '''
+
+rule find_gyra_seqs:
+    output:
+        loci="outputs/loci/cut{i}-NAMES.txt"
+    input: 
+        gff="outputs/prokka/cut{i}.gff"
+    conda: ENV2
+    script:"variant-workflow-grab-loci.R"
+
+rule grab_gyra_nucs:
+    output: "outputs/ffn/cut{i}.ffn"
+    input:
+        loci = "outputs/loci/cut{i}-NAMES.txt",
+        ffn = "outputs/prokka/cut{i}.ffn"
+    conda: ENV
+    shell:'''
+    ./extract-hmmscan-matches.py {input.loci} {input.ffn} > {output} 
+    '''
+
+rule grab_gyra_aas:
+    output:"outputs/faa/cut{i}.faa"
+    input:
+        loci = "outputs/loci/cut{i}-NAMES.txt",
+        faa = "outputs/prokka/cut{i}.faa"
+    conda: ENV
+    shell:'''
+    ./extract-hmmscan-matches.py {input.loci} {input.faa} > {output}
+    '''

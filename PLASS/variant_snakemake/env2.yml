@@ -1,0 +1,6 @@
+channels:
+ - bioconda
+ - conda-forge
+ - r
+dependencies:
+ - bioconductor-rtracklayer=1.40.6
