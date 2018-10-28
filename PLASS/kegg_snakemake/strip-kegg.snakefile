@@ -15,8 +15,6 @@ rule all:
         'outputs/GhostKOALA/other/crumb_nitro_genes.csv',
         'outputs/figures/fig5a.pdf',
         'outputs/figures/fig5a.png',
-        'outputs/figures/fig5b.pdf',
-        'outputs/figures/fig5b.png'
 
 # CRUMB ASSEMBLIES #################################################
 
@@ -94,7 +92,7 @@ rule plot_an_annotations:
         tsv='outputs/GhostKOALA/an-et-al/an_ass.tsv',
         plot='outputs/GhostKOALA/an-et-al/an_ass.pdf'
     input:
-        an ='../an-et-al/an_et_al_genes_parsed.tsv',
+        an ='inputs/an_et_al_genes_parsed.tsv',
         files = dynamic('outputs/GhostKOALA/{crumb_bin}.ko-ann-full.txt')
     params: 
         title = "Assembly",
@@ -158,6 +156,7 @@ rule plot_fig5a:
         info = 'inputs/hu_info.csv',
         crumb_kegg = 'outputs/GhostKOALA/user_ko_definition.txt',
         bin_kegg = 'outputs/hu-bins/GhostKOALA/user_ko_definition.txt',
+        kegg = 'inputs/ko00001_parse.txt'
     conda: ENV
     script: 'scripts/fig5a.R'
 

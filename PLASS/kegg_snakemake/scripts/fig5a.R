@@ -69,7 +69,7 @@ uni <- rbind(uni_crumb, uni_bin)
 
 # DO KEGG -----------------------------------------------
 
-keggparse <- read.delim("explore/ko00001_parse.txt", header= F, sep = "\t")
+keggparse <- read.delim(snakemake@input[['kegg']], header= F, sep = "\t")
 keggparse <- separate(keggparse, V4, into = c("geneID", "description"), sep = " ", remove= T, extra = "merge", fill = "left")
 keggparse <- separate(keggparse, V3, into = c("path", "num"), sep = "\\[", remove = T, extra = "merge", file = "left")
 keggparse <- separate(keggparse, path, into = c("num2", "path"), sep = " ", remove = T, extra = "merge", file = "left")

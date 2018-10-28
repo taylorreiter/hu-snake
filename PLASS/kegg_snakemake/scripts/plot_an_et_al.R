@@ -15,7 +15,7 @@ library(tidyr)
 # READ IN DATA ------------------------------------------------------------
 # read in csv with EC numbers & KOs
 print("read in info")
-info <- read.delim("../an-et-al/an_et_al_genes_parsed.tsv", stringsAsFactors = F, sep = "\t")
+info <- read.delim("inputs/an_et_al_genes_parsed.tsv", stringsAsFactors = F, sep = "\t")
 
 # function ----------------------------------------------------------------
 print("defining functions")
