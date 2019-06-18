@@ -1,0 +1,80 @@
+ENV = "env.yml"
+NBHD =  ["hu-genome19", "hu-genome20", "hu-genome21", "hu-genome22", "hu-genome23", "hu-genome24", "hu-genome25", "hu-genome26", "hu-genome27", "hu-genome28", "hu-genome29", "hu-genome30", "hu-genome31", "hu-genome32", "hu-genome33", "hu-genome34", "hu-genome35", "hu-genome36", "hu-genome37", "hu-genome38", "hu-genome39", "hu-genome40", "hu-genome41"]
+TRIM = ["loose"]
+
+rule all:
+    input: 
+        expand("outputs/paladin/{nbhd}.{trim}trim.sam.flagstat", nbhd = NBHD, trim = TRIM),
+        expand("outputs/paladin/{nbhd}.{trim}trim.sort.bam.bai", nbhd = NBHD, trim = TRIM)
+
+rule download_plass:
+    output: "inputs/plass/{nbhd}.{trim}trim.plass.c100.fa"
+    shell:'''
+    touch {output} #place holder for downloading plass hardtrim results
+    '''
+
+rule format_plass_cut:
+    output: "outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.fa"
+    input: "inputs/plass/{nbhd}.{trim}trim.plass.c100.fa"
+    shell:'''
+    cut -d ' ' -f1 {input} > {output}
+    '''
+
+rule format_plass_dup:
+    output: "outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.dup.fa"
+    input: "outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.fa"
+    shell:'''
+    awk '(/^>/ && s[$0]++){{$0=$0"_"s[$0]}}1;' {input} > {output}
+    '''
+
+rule paladin_index:
+    output: "outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.dup.fa.bwt"
+    input: "outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.dup.fa"
+    conda: ENV
+    shell:'''
+    paladin index -r3 {input}
+    '''
+
+rule paladin_align:
+    output: "outputs/paladin/{nbhd}.{trim}trim.sam"
+    input:
+        indx="outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.dup.fa.bwt",
+        reads="inputs/reads/{nbhd}.{trim}trim.reads.gz"
+    params: 
+        indx="outputs/plass/{nbhd}.{trim}trim.plass.c100.cut.dup.fa"
+    conda: ENV
+    shell:'''
+    paladin align -f 125 -t 2 {params.indx} {input.reads} > {output}
+    '''
+
+rule samtools_flagstat_paladin:
+    output: "outputs/paladin/{nbhd}.{trim}trim.sam.flagstat"
+    input: "outputs/paladin/{nbhd}.{trim}trim.sam"
+    conda: ENV
+    shell:'''
+    samtools flagstat {input} > {output}
+    '''
+
+rule samtools_view_paladin:
+    output: "outputs/paladin/{nbhd}.{trim}trim.bam"
+    input: "outputs/paladin/{nbhd}.{trim}trim.sam"
+    conda: ENV
+    shell:'''
+    samtools view -b {input} > {output}
+    '''
+
+rule samtools_sort_paladin:
+    output: "outputs/paladin/{nbhd}.{trim}trim.sort.bam"
+    input: "outputs/paladin/{nbhd}.{trim}trim.bam"
+    conda: ENV
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+
+rule samtools_index_paladin:
+    output: "outputs/paladin/{nbhd}.{trim}trim.sort.bam.bai"
+    input: "outputs/paladin/{nbhd}.{trim}trim.sort.bam"
+    conda: ENV
+    shell:'''
+    samtools index {input} 
+    '''
